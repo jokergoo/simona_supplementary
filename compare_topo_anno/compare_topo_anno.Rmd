@@ -1,0 +1,249 @@
+---
+title: "Compare topology and annotation-based semantic similarity methods"
+author: "Zuguang Gu ( z.gu@dkfz.de )"
+date: '`r Sys.Date()`'
+output: 
+  html_document:
+    css: main.css
+    toc: true
+---
+
+```{r, echo = FALSE, message = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    tidy  = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6, fig.height = 6,
+    fig.align = "center")
+```
+
+Other R packages for semantic similarity analysis are only based on gene
+annotations, thus mainly applicable on the Gene Ontology. Besides
+annotation-based methods, **simona** also supports a large number of methods
+based on the topology of GO DAG, with no need of external annotation data. In
+this document, we compare the semantic similarity calculated based on gene
+annotations and based on topology of the GO DAG.
+
+We use Gene Ontology (Biological Process namespace) as the test ontology and
+human as the organism.
+
+```{r}
+library(simona)
+dag = create_ontology_DAG_from_GO_db(org_db = "org.Hs.eg.db")
+dag
+```
+
+Since some GO terms have no gene annotated and the information contents (IC)
+cannot be calculated, we random sample 500 GO terms that have genes annotated
+(i.e. with IC values).
+
+```{r}
+set.seed(123)
+ic = term_IC(dag, method = "IC_annotation")
+ic = ic[!is.na(ic)]
+go_id = sample(names(ic), 500)
+```
+
+## Compare MICA and LCA
+
+For the IC-based method (which is here annotation-based. We name it as
+"IC_annotation" for easier discussion), the similarity is determined by the IC
+of the most informative commmon ancestor (MICA) of two terms, while for the
+topology-based method, the similarity is determined by the lowest common
+ancestor (LCA). We compare, for a given set of GO terms, how different their
+MICA and LCA are.
+
+We have already set the gene annotation when calling
+`create_ontology_DAG_from_GO_db()`, thus calling `MICA_term()` directly uses
+IC_annotation as the IC method. `MICA_term()` and `LCA_term()` returns a
+symmetric matrix, thus we only take the lower triangle of the square matrix.
+
+```{r}
+term1 = MICA_term(dag, go_id)
+term1 = term1[lower.tri(term1)]
+
+term2 = LCA_term(dag, go_id)
+term2 = term2[lower.tri(term2)]
+```
+
+In all `500*(500-1)/2 = 124750` pairs of terms, we check how many MICA and LCA are the same.
+
+```{r}
+sum(term1 == term2)
+sum(term1 == term2)/length(term1)
+```
+
+It shows for more than 98% of the term pairs, their MICA and LCA are the same
+terms. For the remaining 2287 (2%) term pairs, we check how different their
+MICA and LCA are.
+
+```{r}
+l = term1 != term2
+term1 = term1[l]
+term2 = term2[l]
+```
+
+Although the MICA and LCA of these 2287 term pairs are different, we ask are
+their MICA and LCA in ancestor/offspring relations? I.e. is the MICA an
+ancestor or offspring of the LCA? The function `shortest_distances_directed()`
+calculates _directed_ distance in the DAG. If term $a$ cannot reach term $b$,
+taking directions into consideration, the distance value will be -1.
+
+```{r}
+term_unique = unique(c(term1, term2))
+dist = shortest_distances_directed(dag, term_unique) # a non-symmetric matrix with terms as names
+x = numeric(length(term1))
+for(i in seq_along(term1)) {
+    x[i] = ifelse(dist[term1[i], term2[i]] >= 0, dist[term1[i], term2[i]], dist[term2[i], term1[i]]) 
+}
+table(x)
+```
+
+It shows for the 2287 term pairs in this random dataset, none of their MICA
+and LCA are in ancestor/offspring relations.
+
+
+
+To demonstrate it, we can take the MICA and LCA of the first term pair as an
+example. Here the syntax `dag[, c(term1[1], term2[1])]` returns an induced
+sub-DAG only taking `c(term1[1], term2[1])` as leaf terms. We color the MICA
+term in red, and the LCA term in blue. `"GO:0008150"` is the root of the DAG
+(biological_process). The following plot shows the MICA term "`GO:0010035`"
+and the LCA term `"GO:1901701"` although are not in ancestor/offspring
+relations, are still close in the DAG.
+
+```{r, fig.width = 4, fig.height = 4}
+dag2 = dag[, c(term1[1], term2[1])]
+color = c("red", "blue")
+names(color) = c(term1[1], term2[1])
+
+dag_graphviz(dag2, color = color)
+```
+
+
+Based on the example graph above, we guess it might be a general pattern that
+the MICA and LCA of the 2287 term pairs are in sibling relations, i.e. under a
+same parent term, or at least very close to each other. Next we calculate the
+distance between MICA and LCA taking DAG as _undirected_. The function
+`shortest_distances_via_NCA()` calculates the shortest distance of two terms
+passing through their nearest common ancestor (NCA).
+
+
+```{r}
+term_unique = unique(c(term1, term2))
+dist = shortest_distances_via_NCA(dag, term_unique) # a symmetric matrix with terms as names
+x = numeric(length(term1))
+for(i in seq_along(term1)) {
+    x[i] = dist[term1[i], term2[i]]
+}
+barplot(table(x), xlab = "Undirected distance between MICA and LCA of a term pair", ylab = "Number of term pairs")
+```
+
+The barplot shows 76.3% of the 2287 term pairs, their MICA and LCA are
+siblings (i.e. sharing the same parent). MICA and LCA are also close in
+the DAG for other term pairs.
+
+## Semantic similarity based on MICA and LCA
+
+In general, based on the results we have generated, we could conclude the the
+MICA method and the LCA method are very similar. In the most of the time, they
+are the same set or very close in the DAG.
+
+If thinking depth as a generalized measure of information content where deeper
+in the DAG a larger value of of depth a term has, In this way, LCA is also a
+type of MICA. we compare the global IC_annotation and depth.
+
+```{r, fig.width = 10, fig.height = 5}
+ic = term_IC(dag, method = "IC_annotation")
+depth = dag_depth(dag)
+
+par(mfrow = c(1, 2))
+boxplot(ic ~ depth, xlab = "Depth", ylab = "IC_annotation")
+barplot(table(depth), xlab = "Depth", ylab = "Number of terms")
+```
+
+It shows depth and IC_annotation have very strong positive relations. Together
+with the high compatible sets of MICA and LCA, it can be expected that the
+semantic similarities based on MICA and LCA should also be highly similar.
+
+In the following example, we compare `"Sim_Lin_1998"` and `"Sim_WP_1994"`
+methods. `"Sim_Lin_1998"` is based on the IC_annotation of MICA and
+`"Sim_WP_1994"` is based on the depth of LCA. Note that the following two
+heatmaps share the same row orders and column orders.
+
+```{r, fig.width = 10, fig.height = 5}
+mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
+mat2 = term_sim(dag, go_id, method = "Sim_WP_1994")
+
+od = hclust(dist(mat1))$order
+
+library(ComplexHeatmap)
+
+Heatmap(mat1, name = "similarity_lin", 
+        show_row_names = FALSE, show_column_names = FALSE,
+        row_order = od, column_order = od,
+        column_title = "Sim_Lin_1998, based on MICA/IC_annotation") +
+Heatmap(mat2, name = "similarity_wp", 
+        show_row_names = FALSE, show_column_names = FALSE,
+        row_order = od, column_order = od,
+        column_title = "Sim_WP_1994, based on LCA/depth")
+```
+
+The two heatmaps show very similar patterns. Heatmap under `"Sim_WP_1994"` in
+general shows overall stronger similarity signals, but also higher level of
+"inter-block" signals.
+
+And the scatter plot of the similarity values from the two methods:
+
+```{r}
+plot(mat1[lower.tri(mat1)], mat2[lower.tri(mat2)], pch = 16, col = "#00000010",
+    xlab = "Sim_Lin_1998 / IC_annotation / MICA", ylab = "Sim_WP_1994 / depth / LCA")
+```
+
+Last, it is actually not strange that MICA/IC_annotation method is very
+similar to LCA/depth method, because IC_annotation is calculated based on the
+aggregation of gene annotations from offspring terms, which actually also
+takes account of the DAG topology.
+
+## Session info
+
+```{r}
+sessionInfo()
+```
+
+
+
+<script src="jquery.sticky.js"></script>
+<script>
+$(document).ready(function(){
+    $("#TOC").sticky({
+        topSpacing: 0,
+        zIndex:1000    
+    })
+    $("#TOC").on("sticky-start", function() {
+
+        $("<p style='font-size:1.2em; padding-left:4px;'><a id='TOC-click'>Table of Content</a></p>").insertBefore($("#TOC ul:first-child"));
+        $("#TOC-click").hover(function() {
+            $(this).css("color", "#0033dd").css("cursor", "pointer");
+            $("#TOC").children().first().next().show();
+            $("#TOC").hover(function() {
+                $(this).children().first().next().show();
+            }, function() {
+                $(this).children().first().next().hide();
+                $("body").off("hover", "#TOC");
+            })
+        }, function() {
+            $(this).css("color", "#0033dd");
+        })
+        $("#TOC").children().first().next().hide();
+
+    })
+    $("#TOC").on("sticky-end", function() {
+        $("#TOC").children().first().remove();
+        $("#TOC").children().first().show();
+    })
+});
+</script>
+

@@ -1,0 +1,119 @@
+---
+title: "Compare IC methods"
+author: "Zuguang Gu ( z.gu@dkfz.de )"
+date: '`r Sys.Date()`'
+output: 
+  html_document:
+    css: main.css
+    toc: true
+---
+
+```{r, echo = FALSE, message = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    tidy  = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6, fig.height = 6,
+    fig.align = "center")
+```
+
+**simona** supports many methods for calculating information contents (IC). In
+this document, we compare different IC methods using Gene Ontology as the test
+ontology.
+
+By default, we use the Biological Process (BP) namespace in GO. We only take
+`"is_a"` and `"part_of"` as the relation types. The `org_db` argument is also
+set to human for the `IC_annotation` method.
+
+```{r}
+library(simona)
+dag = create_ontology_DAG_from_GO_db(org_db = "org.Hs.eg.db")
+dag
+```
+
+All IC methods supported in **simona** are listed as follows. The full
+description of these IC methods can be found in the vignettes of **simona**.
+
+```{r}
+all_term_IC_methods()
+```
+
+We go over all IC methods in **simona** and save the results in a list.
+
+```{r}
+lt = lapply(all_term_IC_methods(), function(method) {
+    term_IC(dag, method)
+})
+names(lt) = all_term_IC_methods()
+df = as.data.frame(lt)
+```
+
+All the vector elements in `lt` contain IC values for all terms in the same order.
+
+We calculate the correlations between IC vectors from different methods and
+make the correlation heatmap. As 1 - correlation is also a dissimilarity
+measurement, we directly generate the hierarchical clustering based on `1 -
+cor`.
+
+```{r, fig.width = 7}
+cor = cor(df, use = "pairwise.complete.obs", method = "spearman")
+hc = hclust(as.dist(1 - cor))
+
+library(ComplexHeatmap)
+Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
+    column_title = "IC correlation, GO BP")
+```
+
+The heatmap shows the IC methods can be put into three groups. The groups can 
+be manually extracted by observing sub-trees from the dendrogram.
+
+```{r}
+group = c("IC_annotation" = 1, "IC_Seddiqui_2010" = 1, "IC_Zhang_2006" = 1,
+          "IC_offspring" = 1, "IC_Seco_2004" = 1, "IC_universal" = 2,
+          "IC_Wang_2007" = 2, "IC_Meng_2012" = 3, "IC_Sanchez_2011" = 3,
+          "IC_height" = 3, "IC_Zhou_2008" = 3)
+```
+
+The three groups of IC methods are:
+
+1. `IC_offspring`, `IC_annotation`, `IC_Zhang_2006`, `IC_Seco_2004`,
+  `IC_Seddiqui_2010`: Methods based on offspring terms.
+2. `IC_universal`, `IC_Wang_2007`:
+3. `IC_height`, `IC_Zhou_2008`, `IC_Sanchez_2011`, `IC_Meng_2012`: Methods based on the height of terms.
+
+
+Next we perform MDS (multidimension scaling) analysis on the `1-cor` distance matrix and
+visualize the first two dimensions. 
+
+```{r, fig.width = 7}
+library(ggrepel)
+library(ggplot2)
+loc = cmdscale(as.dist(1 - cor))
+loc = as.data.frame(loc)
+colnames(loc) = c("x", "y")
+loc$method = rownames(loc)
+
+loc$group = group[rownames(loc)]
+
+ggplot(loc, aes(x, y, label = method, col = factor(group))) + 
+    geom_point() + 
+    geom_text_repel(show.legend = FALSE) +
+    labs(x = "Dimension 1", y = "Dimension 2") +
+    ggtitle("MDS based on the correlation between ICs")
+```
+
+
+We directly compare different IC methods with pairwise scatter plots, colored by 
+depths of terms.
+
+```{r, fig.width = 12, fig.height = 12}
+pairs(df[, hc$order], pch = ".", col = dag_depth(dag), gap = 0)
+```
+
+
+
+```{r}
+sessionInfo()
+```

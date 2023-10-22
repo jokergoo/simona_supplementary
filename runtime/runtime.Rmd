@@ -1,0 +1,304 @@
+---
+title: "Runtime"
+author: "Zuguang Gu ( z.gu@dkfz.de )"
+date: '`r Sys.Date()`'
+output: 
+  html_document:
+    css: main.css
+    toc: true
+---
+
+```{r, echo = FALSE, message = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    tidy  = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6, fig.height = 6,
+    fig.align = "center")
+```
+
+In this document, we benchmark the runtime performance of **simona** on ontologies
+with various sizes (i.e., on the levels of 1K, 10K, 100K, 1M).
+
+```{r}
+library(simona)
+set.seed(123)
+```
+
+```{r, echo = FALSE}
+simona_opt$verbose = FALSE
+```
+
+We write a small function which applies the `"Sim_WP_1994"` similarity method.
+`"Sim_WP_1994"` is based on the DAG structure where it uses the longest
+distance from root to the lowest common ancestor (LCA) term (i.e. the depth of
+LCA) and the longest distance from the LCA term to the two terms.
+
+
+Denote two terms as $a$ and $b$, their LCA term as $c$, $\delta(c)$ is the depth
+of $c$ in the DAG, i.e. the longest distance from the root term, $\mathrm{len}(c, a)$
+is the longest distance from $c$ to $a$, the `"Sim_WP_1994"` similarity is calculated as:
+
+$$
+ \mathrm{Sim}(a, b) =  \frac{2*\delta(c)}{\mathrm{len}(c, a) + \mathrm{len}(c, b) + 2*\delta(c)}
+$$
+
+
+```{r}
+benchmark_runtime = function(dag, by = 200, max = 10000) {
+    invisible(dag_depth(dag))  # depth will be cached
+
+    n_terms = dag_n_terms(dag)
+    k = seq(by, min(max, floor(n_terms/by)*by), by = by)
+    t = rep(NA_real_, length(k))
+    for(i in seq_along(k)) {
+        message(k[i], "/", max(k), "...")
+        terms = sample(n_terms, k[i]) # numeric indicies are also allowed
+        t[i] = system.time(term_sim(dag, terms, method = "Sim_WP_1994"))[3]
+    }
+    data.frame(k = k, t = t)
+}
+```
+
+In the common settings when we import ontology datasets, we set `remove_rings
+= TRUE` to remove rings and `remove_cyclic_paths = TRUE` to remove cyclic
+links.
+
+## Pathway Ontology
+
+The `pw.owl` file is downloaded from http://obofoundry.org/ontology/pw.html.
+It contains several thousands of terms.
+
+```{r}
+dag = import_owl("~/workspace/ontology/OBOFoundry/pw/pw.owl", 
+    remove_rings = TRUE, remove_cyclic_paths = TRUE)
+dag
+```
+
+```{r, eval = !file.exists("runtime_pw.rds")}
+df = benchmark_runtime(dag, by = 100)
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Pathway Ontology, ", dag_n_terms(dag), " terms"))
+```
+
+
+```{r, echo = FALSE}
+if(!file.exists("runtime_pw.rds")) {
+    saveRDS(df, file = "runtime_pw.rds")
+} else {
+    df = readRDS("runtime_pw.rds")
+}
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Pathway Ontology, ", dag_n_terms(dag), " terms"))
+```
+
+## Gene Ontology
+
+Ontology is directly from the **GO.db** package. We use the Biological Process
+(BP) namespace. To be consistent to other ontologies under test, we only take
+the `"is_a"` relation type. It contains several tens of thousands of terms.
+
+```{r}
+dag = create_ontology_DAG_from_GO_db(relations = NULL)
+dag
+```
+
+```{r, eval = !file.exists("runtime_gobp.rds")}
+df = benchmark_runtime(dag, by = 400, max = 20000)
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Gene Ontology (BP), ", dag_n_terms(dag), " terms"))
+```
+
+
+```{r, echo = FALSE}
+if(!file.exists("runtime_gobp.rds")) {
+    saveRDS(df, file = "runtime_gobp.rds")
+} else {
+    df = readRDS("runtime_gobp.rds")
+}
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Gene Ontology (BP), ", dag_n_terms(dag), " terms"))
+```
+
+
+##  Chemical Entities of Biological Interest
+
+The `chebi.obo` file is dowloaded from http://obofoundry.org/ontology/chebi.html. It contains several hundreds of thousands of terms.
+
+```{r}
+dag = import_obo("~/workspace/ontology/OBOFoundry/chebi/chebi.obo",
+    remove_rings = TRUE, remove_cyclic_paths = TRUE)
+dag
+```
+
+```{r, eval = !file.exists("runtime_chebi.rds")}
+df = benchmark_runtime(dag, by = 400, max = 20000)
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Chemical Entities of Biological Interest, ", dag_n_terms(dag), " terms"))
+```
+
+```{r, echo = FALSE}
+if(!file.exists("runtime_chebi.rds")) {
+    saveRDS(df, file = "runtime_chebi.rds")
+} else {
+    df = readRDS("runtime_chebi.rds")
+}
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("Chemical Entities of Biological Interest, ", dag_n_terms(dag), " terms"))
+```
+
+
+## NCBI organismal classification
+
+The `ncbitaxon.owl` file is downloaded from http://obofoundry.org/ontology/ncbitaxon.html. It contains several millions of terms.
+
+```{r import_ncbitaxon}
+dag = import_owl("~/workspace/ontology/OBOFoundry/ncbitaxon/ncbitaxon.owl",
+    remove_rings = TRUE, remove_cyclic_paths = TRUE)
+dag
+```
+
+```{r, eval = !file.exists("runtime_ncbitaxon.rds")}
+df = benchmark_runtime(dag, by = 500, max = 10000)
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("NCBI organismal classification, ", dag_n_terms(dag), " terms"))
+```
+
+
+```{r, echo = FALSE}
+if(!file.exists("runtime_ncbitaxon.rds")) {
+    saveRDS(df, file = "runtime_ncbitaxon.rds")
+} else {
+    df = readRDS("runtime_ncbitaxon.rds")
+}
+plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+    main = paste0("NCBI organismal classification, ", dag_n_terms(dag), " terms"))
+```
+
+## Benchmark on OBOFoundry ontologies
+
+Similarly, we benchmark all OBOFoundry ontologies with numbers of terms larger
+than 1000. To reduce the runtime, for each ontology, we only set 10 different
+numbers of terms to test, from 100 to `min(10000, dag_n_terms(dag))`. Here the
+result is already generated ans saved in `"runtime_OBOFoundry_all.RData"`. The
+script for generating this file is
+[run_time_OBOFoundry.R](run_time_OBOFoundry.R).
+
+There are two objects in `"runtime_OBOFoundry_all.RData"`: `lt` which is a
+list of two-column data frames which contains number of random terms to test
+and corresponding runtime, `df` a data frame that contains meta-information of
+each ontology.
+
+```{r}
+load("runtime_OBOFoundry_all.RData")
+length(lt)
+head(names(lt))
+head(lt[[1]])
+head(df)
+```
+
+Different ontologies have different range of runtime. To make them comparible,
+we scale values on x-axis (i.e. numbers of terms) and values on y-axis
+(runtime) both into the range of `[0, 1]`.
+
+```{r}
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+    xlab = "Number of terms, scaled", ylab = "runtime, scaled",
+    main = "Compare runtime performance of OBOFoundry ontologies")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    x = x/max(x)
+    y = y/max(y)
+    lines(x, y, col = "#00000080")
+}
+abline(a = 0, b = 1, col = "red", lty = 2)
+```
+
+The plot shows for most of the ontologies, **simona** has a non-linear time
+complexity for calculating the similarities, but there are a few ontologies,
+**simona** shows a near-linear time complexity.
+
+Since the previous plot scales values on both x-axis and y-axis into `[0, 1]`,
+we can measure the difference to the linear time complexity by calculating the
+area difference of the curve to `y = x` (the diagonal line). If the curve bends
+more to the bottom left of the plotting region, it means the it has higher time complexity.
+The following function `rel_diff()` calculates such relative time complexity difference.
+
+```{r}
+rel_diff = function(x, y) {
+    if(missing(y)) {
+        y = x[[2]]
+        x = x[[1]]
+    }
+
+    od = order(x)
+    x = x[od]
+    y = y[od]
+    n = length(x)
+
+    x = x/max(x)
+    y = y/max(y)
+
+    area = sum( 0.5*(x[2:n] - x[2:n - 1])*(y[2:n] + y[2:n - 1]) )
+
+    0.5 - area
+}
+```
+
+We find the time complexity seems to have a negative relation to the numbers of terms,
+where when the number of terms increases, the time complexity is more near linear complexity.
+
+```{r}
+df$rel_diff = sapply(lt, rel_diff)
+
+plot(df$n_terms, df$rel_diff, log = "x",
+    xlab = "Number of terms", 
+    ylab = "Relative difference to linear time complexity")
+abline(h = 0, lty = 2, col = "grey")
+l = df$n_terms > 100000
+text(df$n_terms[l], df$rel_diff[l], df$id[l], 
+    adj = c(1, -0.4), col = "blue", cex = 0.8)
+```
+
+
+## Session info
+
+```{r}
+sessionInfo()
+```
+
+
+<script src="jquery.sticky.js"></script>
+<script>
+$(document).ready(function(){
+    $("#TOC").sticky({
+        topSpacing: 0,
+        zIndex:1000    
+    })
+    $("#TOC").on("sticky-start", function() {
+
+        $("<p style='font-size:1.2em; padding-left:4px;'><a id='TOC-click'>Table of Content</a></p>").insertBefore($("#TOC ul:first-child"));
+        $("#TOC-click").hover(function() {
+            $(this).css("color", "#0033dd").css("cursor", "pointer");
+            $("#TOC").children().first().next().show();
+            $("#TOC").hover(function() {
+                $(this).children().first().next().show();
+            }, function() {
+                $(this).children().first().next().hide();
+                $("body").off("hover", "#TOC");
+            })
+        }, function() {
+            $(this).css("color", "#0033dd");
+        })
+        $("#TOC").children().first().next().hide();
+
+    })
+    $("#TOC").on("sticky-end", function() {
+        $("#TOC").children().first().remove();
+        $("#TOC").children().first().show();
+    })
+});
+</script>
