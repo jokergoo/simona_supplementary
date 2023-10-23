@@ -50,9 +50,9 @@ go_id = sample(names(ic), 500)
 
 For the IC-based method (which is here annotation-based. We name it as
 "IC_annotation" for easier discussion), the similarity is determined by the IC
-of the most informative commmon ancestor (MICA) of two terms, while for the
-topology-based method, the similarity is determined by the lowest common
-ancestor (LCA). We compare, for a given set of GO terms, how different their
+of the _most informative commmon ancestor (MICA)_ of two terms, while for the
+topology-based method, the similarity is determined by the _lowest common
+ancestor (LCA)_. We compare, for a given set of GO terms, how different their
 MICA and LCA are.
 
 We have already set the gene annotation when calling
@@ -86,15 +86,15 @@ term2 = term2[l]
 ```
 
 Although the MICA and LCA of these 2287 term pairs are different, we ask are
-their MICA and LCA in ancestor/offspring relations? I.e. is the MICA an
-ancestor or offspring of the LCA? The function `shortest_distances_directed()`
+their MICA and LCA in ancestor/offspring relations? I.e. is the MICA of two terms an
+ancestor or offspring of their LCA? The function `shortest_distances_directed()`
 calculates _directed_ distance in the DAG. If term $a$ cannot reach term $b$,
-taking directions into consideration, the distance value will be -1.
+taking directions into consideration, the distance value is assigned to -1.
 
 ```{r}
 term_unique = unique(c(term1, term2))
 dist = shortest_distances_directed(dag, term_unique) # a non-symmetric matrix with terms as names
-x = numeric(length(term1))
+x = numeric(length(term1)) # dist from term1 to term2 or from term2 to term1
 for(i in seq_along(term1)) {
     x[i] = ifelse(dist[term1[i], term2[i]] >= 0, dist[term1[i], term2[i]], dist[term2[i], term1[i]]) 
 }
@@ -124,7 +124,7 @@ dag_graphviz(dag2, color = color)
 
 
 Based on the example graph above, we guess it might be a general pattern that
-the MICA and LCA of the 2287 term pairs are in sibling relations, i.e. under a
+the MICA and LCA of the 2287 term pairs are in sibling relations, i.e. under the
 same parent term, or at least very close to each other. Next we calculate the
 distance between MICA and LCA taking DAG as _undirected_. The function
 `shortest_distances_via_NCA()` calculates the shortest distance of two terms
@@ -138,17 +138,19 @@ x = numeric(length(term1))
 for(i in seq_along(term1)) {
     x[i] = dist[term1[i], term2[i]]
 }
-barplot(table(x), xlab = "Undirected distance between MICA and LCA of a term pair", ylab = "Number of term pairs")
+barplot(table(x), 
+    xlab = "Undirected distance between MICA and LCA of a term pair", 
+    ylab = "Number of term pairs")
 ```
 
 The barplot shows 76.3% of the 2287 term pairs, their MICA and LCA are
-siblings (i.e. sharing the same parent). MICA and LCA are also close in
+siblings (i.e. sharing the same parent). Most of the MICA and LCA are also close in
 the DAG for other term pairs.
 
 ## Semantic similarity based on MICA and LCA
 
-In general, based on the results we have generated, we could conclude the the
-MICA method and the LCA method are very similar. In the most of the time, they
+In general, based on the results we have generated, we could conclude that the
+MICA method and the LCA method are very similar. In most of the time, they
 are the same set or very close in the DAG.
 
 If thinking depth as a generalized measure of information content where deeper
@@ -160,6 +162,7 @@ ic = term_IC(dag, method = "IC_annotation")
 depth = dag_depth(dag)
 
 par(mfrow = c(1, 2))
+# because depth is discrete, we use boxplot to visualize the correlation
 boxplot(ic ~ depth, xlab = "Depth", ylab = "IC_annotation")
 barplot(table(depth), xlab = "Depth", ylab = "Number of terms")
 ```
@@ -170,8 +173,20 @@ semantic similarities based on MICA and LCA should also be highly similar.
 
 In the following example, we compare `"Sim_Lin_1998"` and `"Sim_WP_1994"`
 methods. `"Sim_Lin_1998"` is based on the IC_annotation of MICA and
-`"Sim_WP_1994"` is based on the depth of LCA. Note that the following two
-heatmaps share the same row orders and column orders.
+`"Sim_WP_1994"` is based on the depth of LCA. The two methods have similar forms.
+
+For `"Sim_Lin_1998"`, the similarity is defined as (let $c$ be the MICA of $a$ and $b$):
+
+$$ \frac{2*\mathrm{IC}(c)}{\mathrm{IC}(a) + \mathrm{IC}(b)}  $$
+
+For `"Sim_WP_1994"`, the similarity is defined as (let $c$ be the LCA of $a$ and $b$):
+
+$$ \frac{2*\mathrm{len}(r, c)}{\mathrm{len}_c(r, a) + \mathrm{len}_c(r, a)} $$
+
+where $\mathrm{len}(r, c)$ is the longest distance from root $r$ to $c$, i.e. the depth of $c$,
+and $\mathrm{len}_c(r, a)$ is the longest distance from $r$ to $a$, passing through $c$.
+
+Note that the following two heatmaps share the same row orders and column orders.
 
 ```{r, fig.width = 10, fig.height = 5}
 mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
@@ -202,10 +217,25 @@ plot(mat1[lower.tri(mat1)], mat2[lower.tri(mat2)], pch = 16, col = "#00000010",
     xlab = "Sim_Lin_1998 / IC_annotation / MICA", ylab = "Sim_WP_1994 / depth / LCA")
 ```
 
-Last, it is actually not strange that MICA/IC_annotation method is very
+It is actually not strange that MICA/IC_annotation method is very
 similar to LCA/depth method, because IC_annotation is calculated based on the
 aggregation of gene annotations from offspring terms, which actually also
 takes account of the DAG topology.
+
+
+Finally, Let's take a simplified example to show the relations between IC_annotation and depth.
+Consider an ontology with a binary tree structure, i.e. each term has two children and each term
+has an unique gene annotated. All the leaf terms in the ontology have depth of $d$. Then the total number
+of genes annotated to the root is $2^{d+1}-1$. For a term with height $h (0 \leq h \leq d)$, the number
+of genes annotated is $2^{d-h+1}-1$, then the IC_annotation would be:
+
+$$ 
+\begin{align*}
+\mathrm{IC}_\mathrm{annotation} & = -\log\left(\frac{2^{d-h + 1} - 1}{2^{d+1} - 1} \right) \\
+            & \approx  -\log\left(\frac{2^{d-h + 1}}{2^{d+1}} \right) \\
+            & = -\log\left(2^{-h} \right ) \\
+            & = h * \log2
+\end{align*} $$
 
 ## Session info
 

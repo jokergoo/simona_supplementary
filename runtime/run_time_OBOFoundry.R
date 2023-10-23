@@ -76,10 +76,17 @@ for(i in seq_len(nrow(df))) {
     df[i, "depth_q99"] = quantile(dag_depth(dag), 0.99)
 
     if(dag_n_terms(dag) < 1000) {
-        next
+        png(qq("../OBOFoundry_gallery/image/OBOFoundry_@{nm}_runtime.png"), width = 600*1.5, height = 600*1.5, res= 72*1.5)
+        plot(NULL, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, ann = FALSE)
+        text(0.5, 0.5, "runtime analysis only for n_terms >= 1000", cex = 1.5)
+        dev.off()
+    } else {
+        lt[[ df$id[i] ]] = benchmark_runtime(dag)
+        png(qq("../OBOFoundry_gallery/image/OBOFoundry_@{nm}_runtime.png"), width = 600*1.5, height = 600*1.5, res= 72*1.5)
+        plot(lt[[nm]], type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+            main = paste0(nm, ", ", df[nm, "n_terms"], " terms"))
+        dev.off()
     }
-
-    lt[[ df$id[i] ]] = benchmark_runtime(dag)
 }
 
 
@@ -88,11 +95,4 @@ df = df[names(lt), ]
 
 save(lt, df, file = "runtime_OBOFoundry_all.RData")
 
-
-for(nm in names(lt)) {
-    png(qq("../OBOFoundry_gallery/image/OBOFoundry_@{nm}_runtime.png"), width = 600*1.5, height = 600*1.5, res= 72*1.5)
-    plot(lt[[nm]], type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
-        main = paste0(nm, ", ", df[nm, "n_terms"], " terms"))
-    dev.off()
-}
 

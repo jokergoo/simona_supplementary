@@ -40,7 +40,7 @@ description of these IC methods can be found in the vignettes of **simona**.
 all_term_IC_methods()
 ```
 
-We go over all IC methods in **simona** and save the results in a list.
+We calculate IC for all GO BP terms with different IC methods and save the results in a list.
 
 ```{r}
 lt = lapply(all_term_IC_methods(), function(method) {
@@ -50,39 +50,39 @@ names(lt) = all_term_IC_methods()
 df = as.data.frame(lt)
 ```
 
-All the vector elements in `lt` contain IC values for all terms in the same order.
-
 We calculate the correlations between IC vectors from different methods and
 make the correlation heatmap. As 1 - correlation is also a dissimilarity
 measurement, we directly generate the hierarchical clustering based on `1 -
 cor`.
 
 ```{r, fig.width = 7}
-cor = cor(df, use = "pairwise.complete.obs", method = "spearman")
+cor = cor(df, use = "pairwise.complete.obs")
 hc = hclust(as.dist(1 - cor))
-
 library(ComplexHeatmap)
 Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
+    row_dend_reorder = TRUE, column_dend_reorder = TRUE,
     column_title = "IC correlation, GO BP")
 ```
 
-The heatmap shows the IC methods can be put into three groups. The groups can 
-be manually extracted by observing sub-trees from the dendrogram.
+The heatmap shows the IC methods can be put into at least two groups. The groups can 
+be manually extracted by observing sub-trees from the dendrogram and the patterns on the heatmap.
+
+We put `"IC_Meng_2012"`, `"IC_Wang_2007"` and `"IC_universal"` into a group called `"others"` because
+these three IC vectors show overall low similarities to other IC vectors. 
 
 ```{r}
-group = c("IC_annotation" = 1, "IC_Seddiqui_2010" = 1, "IC_Zhang_2006" = 1,
-          "IC_offspring" = 1, "IC_Seco_2004" = 1, "IC_universal" = 2,
-          "IC_Wang_2007" = 2, "IC_Meng_2012" = 3, "IC_Sanchez_2011" = 3,
-          "IC_height" = 3, "IC_Zhou_2008" = 3)
+group = c("IC_height" = "1",
+          "IC_Sanchez_2011" = "1",
+          "IC_Zhou_2008" = "1",
+          "IC_Seddiqui_2010" = "2",
+          "IC_Seco_2004" = "2",
+          "IC_offspring" = "2",
+          "IC_Zhang_2006" = "2",
+          "IC_annotation" = "2",
+          "IC_Meng_2012" = "others",
+          "IC_Wang_2007" = "others",
+          "IC_universal" = "others")
 ```
-
-The three groups of IC methods are:
-
-1. `IC_offspring`, `IC_annotation`, `IC_Zhang_2006`, `IC_Seco_2004`,
-  `IC_Seddiqui_2010`: Methods based on offspring terms.
-2. `IC_universal`, `IC_Wang_2007`:
-3. `IC_height`, `IC_Zhou_2008`, `IC_Sanchez_2011`, `IC_Meng_2012`: Methods based on the height of terms.
-
 
 Next we perform MDS (multidimension scaling) analysis on the `1-cor` distance matrix and
 visualize the first two dimensions. 
@@ -99,17 +99,33 @@ loc$group = group[rownames(loc)]
 
 ggplot(loc, aes(x, y, label = method, col = factor(group))) + 
     geom_point() + 
-    geom_text_repel(show.legend = FALSE) +
-    labs(x = "Dimension 1", y = "Dimension 2") +
-    ggtitle("MDS based on the correlation between ICs")
+    geom_text_repel(show.legend = FALSE, size = 3) +
+    labs(x = "Dimension 1", y = "Dimension 2", col = "Group") +
+    ggtitle("MDS based on the correlation between ICs from different IC methods")
 ```
 
+Similar as the heatmap, the three methods of `"IC_Meng_2012"`, `"IC_Wang_2007"` and `"IC_universal"` 
+are quite far from other points in the MDS plot.
 
 We directly compare different IC methods with pairwise scatter plots, colored by 
 depths of terms.
 
 ```{r, fig.width = 12, fig.height = 12}
-pairs(df[, hc$order], pch = ".", col = dag_depth(dag), gap = 0)
+col = c("IC_height" = 2,
+        "IC_Sanchez_2011" = 2,
+        "IC_Zhou_2008" = 2,
+        "IC_Seddiqui_2010" = 3,
+        "IC_Seco_2004" = 3,
+        "IC_offspring" = 3,
+        "IC_Zhang_2006" = 3,
+        "IC_annotation" = 3,
+        "IC_Meng_2012" = 4,
+        "IC_Wang_2007" = 4,
+        "IC_universal" = 4)
+pairs(df[, names(group)], pch = ".", col = dag_depth(dag), gap = 0, 
+    text.panel=function(x, y, labels, cex, font, ...) {
+        text(x, y, labels, col = col[labels])
+    })
 ```
 
 

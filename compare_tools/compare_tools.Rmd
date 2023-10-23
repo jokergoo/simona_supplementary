@@ -88,6 +88,7 @@ onto = ontologyIndex::get_ontology("go-basic.obo",
 library(org.Hs.eg.db)
 tb = toTable(org.Hs.egGO)
 tb = tb[tb$Ontology == "BP", ]
+# this ensures each GO term has genes annotated
 lt = split(tb$go_id, tb$gene_id)
 
 ic2 = ontologyIndex::get_term_info_content(onto, lt)
@@ -98,12 +99,12 @@ go_id2 = names(ic2)
 
 **GOSemSim** uses **GO.db** package as the GO source and **org.Hs.eg.db** as
 the gene annotation source. All relation types of `"is_a"`, `"part_of"`,
-`"regulates"`, `"negatively regulates"` and `positively regulates` are
+`"regulates"`, `"negatively regulates"` and `"positively regulates"` are
 included.
 
 On each GO term, **GOSemSim** takes the number of **all** genes annotated to
 the term and to all its offspring terms **without taking the unique genes**.
-Also note, a gene can be annotated to a GO term duplicatedly for multiple
+Also note, a gene can be annotated to a GO term duplicatedly with multiple
 evidence codes (e.g. the gene with Entrez ID "994" is annotated to a GO term
 "GO:0000086" twice with evidence code "IBA" and "TAS",
 `org.Hs.egGO2EG[["GO:0000086"]]`). If a GO term has no gene annotated, its IC
@@ -127,16 +128,30 @@ information contents and save them to the object `IC` in a local file
 library(GOSim)
 GOSim::setOntology("BP")
 GOSim::calcICs()
-load("ICsBPhumanall.rda")
+load("ICsBPhumanall.rda") # it loads the object `IC`
 ic4 = IC[is.finite(IC)]
 go_id4 = names(ic4)
+```
+
+Note, `GOSim::setOntology()` not only sets the GO namespace, but also loads a
+pre-computed IC vector to the R session which will be used for calculating
+similarity. By default, it only loads the IC vector based on an old version of
+GO shipped with the package. To update the IC vector to the one we just
+generated, we need to run `GOSim::setOntology()` again by explicitly
+specifying the directory that contains `"ICsBPhumanall.rda"`.
+
+```{r}
+head(IC)  # the one we just generated
+head(head(GOSimEnv$IC)) # the one internally used
+GOSim::setOntology("BP", DIR = ".")
+head(head(GOSimEnv$IC)) # the one we have updated
 ```
 
 ### Compare supported GO terms
 
 We compare the supported GO terms in the four tools. The UpSet plot
 shows all the four tools share almost the same set of GO terms, except
-**GOSemSim** loses a tiny amount of terms. This is expected because all the
+**GOSemSim** loses a tiny amount of them. This is expected because all the
 tools are based on the same version of GO data.
 
 ```{r, fig.width = 7, fig.height = 4}
@@ -167,8 +182,13 @@ pairs(df, pch = ".", col = "#00000040", xlim = c(0, 12), ylim = c(0, 12),
 	main = "pairwise comparions of ICs")
 ```
 
-**simona** and **ontologyIndex** almost calculate identical IC values.
-**GOSemSim** and **GOSim** almost calculate identical IC values. This is
+```{r}
+sum(abs(df$simona - df$ontologyIndex) < 1e-10)/nrow(df)
+sum(abs(df$GOSemSim - df$GOSim) < 1e-10)/nrow(df)
+```
+
+**simona** and **ontologyIndex** calculate identical IC values.
+**GOSemSim** and **GOSim** calculate identical IC values. This is
 expected because **simona**/**ontologyIndex** use the same method for
 calculating ICs, and **GOSemSim**/**GOSim** use another same method.
 **simona** and **GOSemSim**, although not identical, still show very strong
@@ -194,8 +214,8 @@ The information content is:
 
 $$ \mathrm{IC}(x) = -\log \left( \frac{|G_x|}{|G_r|} \right) $$
 
-where $G_r$ is the set of all genes annotated to all GO terms (or to the root
-of the GO DAG).
+where $G_r$ is the set of all genes annotated to all GO terms (i.e., the set of
+genes annotated to the root of the GO DAG).
 
 $G_x$ can also be written as:
 
@@ -224,7 +244,7 @@ $$ \mathrm{IC}(x) = -\log \left( \frac{N_x}{N_r} \right) $$
 where $N_r$ is the value for the root term.
 
 As shown in the scatter plot, **GOSemsim/GOSim** systematically over-estimate
-the IC values. The two types of methods are the same when each gene is only
+the IC values. The two types of methods are the same when a gene is only
 uniquely annotated to a single GO term.
 
 ## Compare semantic similarities
@@ -273,35 +293,15 @@ Heatmap(m4, name = "similarity", col = col_fun,
 		column_title = "GOSim, random 500 GO terms")
 ```
 
-**simona** and **ontologySimilarity** generate identical results. **simona**
-and **GOSemSim** generate very similar similarities, except **GOSemSim**
-generate systematic higher similarities than **simona**, which is because of
-the higher ICs by **GOSemSim**. **GOSim** can somehow also show the "diagonal
-block patterns" as the other three heatmps, but some GO terms have zero
-similarities to all other GO terms, which makes the heatmap fragmented. A
-closer look at **GOSim**'s source code reveals that **GOSim** has a different
-way to look for the most informative common ancestor (MICA) terms.
+**simona** and **ontologySimilarity** generate identical results. **GOSemSim**
+and **GOSim** generates identical results. **GOSemSim** and **GOSim** estimate systematically higher
+similarities than **simona** and **ontologySimilarity**, due to that they two over-estimate
+the ICs.
 
-In Lin's similarity method, the similarity between term $a$ and $b$ is
-calculated as the IC of their MICA term $c$ normalized by the average of the IC
-of them two:
-
-$$ \mathrm{Sim}(a, b) = \frac{2 * \mathrm{IC}(c)}{\mathrm{IC}(a) + \mathrm{IC}(b)} $$
-
-The MICA term $c$ is defined as:
-
-$$ c = \operatorname*{arg\,max}_{t \in \mathrm{A}_a^+ \cap \mathrm{A}_b^+} \mathrm{IC}(t)  $$
-
-where e.g. $\mathrm{A}_a^+$ is the set of $a$'s ancestors including $a$ itself.
-
-Different in **GOSim**, the ancestor set excludes the term $a$ (see in the source code: https://github.com/cran/GOSim/blob/master/R/general.R#L24):
-
-$$ c = \operatorname*{arg\,max}_{t \in \mathrm{A}_a \cap \mathrm{A}_b} \mathrm{IC}(t)  $$
-
-This causes the problem where if $a$'s parent is the root $r$ which always has
-$\mathrm{IC}(r) = 0$, the similarity between $a$ and any of $a$'s offspring
-terms is always 0.
-
+```{r}
+sum(abs(m1 - m2) < 1e-10)/250000  # 500*500
+sum(abs(m3 - m4) < 1e-10)/250000
+```
 
 We can also perform a pairwise comparison on semantic similarities between
 tools. We can draw the same conclusions as from the heatmaps.

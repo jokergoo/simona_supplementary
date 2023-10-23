@@ -28,6 +28,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+**simona** supports many methods for calculating semantic similarities (term sim). In
+this document, we compare different term sim methods using Gene Ontology as the test
+ontology.
+
+By default, we use the Biological Process (BP) namespace in GO. We only take
+`"is_a"` and `"part_of"` as the relation types. The `org_db` argument is also
+set to human for the annotation-based method.
+
 
 ```{r}
 library(simona)
@@ -35,7 +43,17 @@ dag = create_ontology_DAG_from_GO_db(org_db = "org.Hs.eg.db")
 dag
 ```
 
-Let's make a comparison of various similarity methods, using the GO BP ontology.
+
+All term sim methods supported in **simona** are listed as follows. The full
+description of these IC methods can be found in the vignettes of **simona**.
+
+```{r}
+all_term_sim_methods()
+```
+
+We compare all supported term sim methods, using 500 random GO terms as test.
+Since we also compare annotation-based methods, we randomly sample 500 GO terms
+from those terms having gene annotations.
 
 ```{r}
 set.seed(123)
@@ -44,6 +62,7 @@ ic = ic[!is.na(ic)]
 go_id = sample(names(ic), 500)
 ```
 
+We calculate similarities with different term sim methods and save the results in a list.
 
 ```{r}
 lt = lapply(all_term_sim_methods(), function(method) {
@@ -52,46 +71,80 @@ lt = lapply(all_term_sim_methods(), function(method) {
 names(lt) = all_term_sim_methods()
 ```
 
+For comparison, we take the lower triangle matrix and merge all similarities values from
+different methods into a data frame.
+
 ```{r}
 df = as.data.frame(lapply(lt, function(x) x[lower.tri(x)]))
+```
 
-LCA_depth = LCA_depth(dag, go_id)
-LCA_depth = LCA_depth[lower.tri(LCA_depth)]
+We calculate the correlations between similarity vectors from different methods and
+make the correlation heatmap. As 1 - correlation is also a dissimilarity
+measurement, we directly generate the hierarchical clustering based on `1 -
+cor`.
+
+
+```{r, fig.width = 9, fig.height = 8}
+cor = cor(df, use = "pairwise.complete.obs")
+hc = hclust(as.dist(1 - cor))
+library(ComplexHeatmap)
+Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
+    row_dend_reorder = TRUE, column_dend_reorder = TRUE,
+    column_title = "Semantic similarity correlation, GO BP")
 ```
 
 
-And the heatmap of the correlations of semantic similarities. 
+We next remove the following term sim methods which show very different patterns
+to other term sim methods, and remake the heatmap.
 
 ```{r, fig.width = 8, fig.height = 8}
-cor = cor(df, use = "pairwise.complete.obs")
-
-library(ComplexHeatmap)
-Heatmap(cor, name = "correlation", column_title = "Pearson correlation")
-```
-
-```{r}
-ind = which(colnames(df) %in% c("Sim_Jiang_1997", 
-    "Sim_Dice", "Sim_Kappa", "Sim_Jaccard", "Sim_Overlap", 
-    "Sim_AIC_2014", "Sim_universal", "Sim_HRSS_2013"))
+ind = which(colnames(df) %in% c("Sim_Jiang_1997", "Sim_HRSS_2013", "Sim_universal",
+    "Sim_Dice", "Sim_Kappa", "Sim_Jaccard", "Sim_Overlap"))
 cor2 = cor[-ind, -ind]
 df2 = df[, -ind]
+
+hc = hclust(as.dist(1 - cor2))
+Heatmap(cor2, name = "correlation", cluster_rows = hc, cluster_columns = hc,
+    row_dend_reorder = TRUE, column_dend_reorder = TRUE,
+    column_title = "Semantic similarity correlation, GO BP")
 ```
 
-```{r, fig.width = 8, fig.height = 8}
-Heatmap(cor2, name = "correlation", column_title = "Pearson correlation")
-```
+We can observe that all the term sim methods can be put into five groups. We manually add
+group labels to these term sim methods:
 
 ```{r}
-group = c("Sim_Pekar_2002" = 1, "Sim_Stojanovic_2001" = 1, "Sim_WP_1994" = 1,
-          "Sim_Shenoy_2012" = 1, "Sim_Li_2003" = 1, "Sim_Wang_edge_2012" = 1,
-          "Sim_SSDD_2013" = 2, "Sim_RSS_2013" = 2, "Sim_Zhong_2002" = 2,
-          "Sim_Slimani_2006" = 2, "Sim_Shen_2010" = 3, "Sim_Zhang_2006" = 3,
-          "Sim_EISI_2015" = 3, "Sim_XGraSM_2013" = 3, "Sim_Lin_1998" = 3,
-          "Sim_Resnik_1999" = 3, "Sim_FaITH_2010" = 3, "Sim_Relevance_2006" = 3,
-          "Sim_SimIC_2010" = 3, "Sim_Wang_2007" = 4, "Sim_Ancestor" = 4,
-          "Sim_GOGO_2018" = 4, "Sim_AlMubaid_2006" = 4, "Sim_Rada_1989" = 4,
-          "Sim_Leocock_1998" = 4, "Sim_Resnik_edge_2005" = 4)
+group = c("Sim_Shen_2010" = 1,
+          "Sim_Zhang_2006" = 1,
+          "Sim_EISI_2015" = 1,
+          "Sim_XGraSM_2013" = 1,
+          "Sim_Resnik_1999" = 1,
+          "Sim_Lin_1998" = 1,
+          "Sim_FaITH_2010" = 1,
+          "Sim_Relevance_2006" = 1,
+          "Sim_SimIC_2010" = 1,
+          "Sim_SSDD_2013" = 2,
+          "Sim_RSS_2013" = 2,
+          "Sim_Zhong_2002" = 2,
+          "Sim_Slimani_2006" = 2,
+          "Sim_Pekar_2002" = 3,
+          "Sim_WP_1994" = 3,
+          "Sim_Shenoy_2012" = 3,
+          "Sim_Stojanovic_2001" = 3,
+          "Sim_Li_2003" = 3,
+          "Sim_Wang_edge_2012" = 3,
+          "Sim_Wang_2007" = 4,
+          "Sim_Ancestor" = 4,
+          "Sim_AIC_2014" = 4,
+          "Sim_GOGO_2018" = 4,
+          "Sim_AlMubaid_2006" = 5,
+          "Sim_Leocock_1998" = 5,
+          "Sim_Rada_1989" = 5,
+          "Sim_Resnik_edge_2005" = 5)
 ```
+
+Next we perform MDS (multidimension scaling) analysis on the `1-cor` distance matrix and
+visualize the first two dimensions. 
+
 
 ```{r, fig.width = 7, fig.height = 6}
 library(ggrepel)
@@ -105,9 +158,9 @@ loc$group = group[rownames(loc)]
 
 ggplot(loc, aes(x, y, label = method, col = factor(group))) + 
     geom_point() + 
-    geom_text_repel(show.legend = FALSE) +
-    labs(x = "Dimension 1", y = "Dimension 2") +
-    ggtitle("MDS based on the correlation between similarities")
+    geom_text_repel(show.legend = FALSE, size = 3) +
+    labs(x = "Dimension 1", y = "Dimension 2", col = "Group") +
+    ggtitle("MDS based on the correlation between similarities from different term sim methods")
 ```
 
 
@@ -129,10 +182,77 @@ for(nm in names(lt)) {
 }
 ```
 
+
+The pairwise scatter plot of semantic similarities from two term sim methods.
+
+```{r, eval = FALSE, echo = FALSE}
+LCA_depth = LCA_depth(dag, go_id)
+LCA_depth = LCA_depth[lower.tri(LCA_depth)]
+
+library(GetoptLong)
+for(i in 1:5) {
+    l = group == i
+    g = names(group)[l]
+    ind = sample(nrow(df2), 5000)
+
+    png(qq("image/scatterplot_group_@{i}_foo.png"), 
+        width = 150*sum(l)*1.5, height = 150*sum(l)*1.5, res = 72*1.5)
+    pairs(df2[ind, g], pch = 16, cex = 0.5, gap = 0, col = LCA_depth[ind]+1)
+    dev.off()
+
+    system(qq("pngquant --speed=10 --quality=60 image/scatterplot_group_@{i}_foo.png -o image/scatterplot_group_@{i}.png --force"))
+    file.remove(qq("image/scatterplot_group_@{i}_foo.png"))
+
+}
+```
+
+
+<style>
+#scatterplot ul li {
+    padding-right:20px;
+    cursor: pointer;
+    display: inline-block;
+    color: #337ab7;
+}
+#scatterplot ul {
+    padding-inline-start: 0px;
+    margin-top: 20px;
+}
+</style>
+
+<div id="scatterplot">
+<ul>
+<li><a id="scatterplot_group1" style="color:#337ab7" onclick="switch_scatterplot(1);">Group 1</a></li>
+<li><a id="scatterplot_group2" style="color:grey" onclick="switch_scatterplot(2);">Group 2</a></li>
+<li><a id="scatterplot_group3" style="color:grey" onclick="switch_scatterplot(3);">Group 3</a></li>
+<li><a id="scatterplot_group4" style="color:grey" onclick="switch_scatterplot(4);">Group 4</a></li>
+<li><a id="scatterplot_group5" style="color:grey" onclick="switch_scatterplot(5);">Group 5</a></li>
+</ul>
+<div>
+<img id="scatterplot_image" src="image/scatterplot_group_1.png" /></div>
+</div>
+
+<script>
+scatterplot_size = [9, 4, 6, 4, 4];
+$("#scatterplot_image").width(scatterplot_size[0]*150);
+function switch_scatterplot(i) {
+    $("#scatterplot_image").attr("src", "image/scatterplot_group_" + i + ".png");
+    $("#scatterplot_image").width(scatterplot_size[i-1]*150);
+    $("#scatterplot_group1").css("color", "grey");
+    $("#scatterplot_group2").css("color", "grey");
+    $("#scatterplot_group3").css("color", "grey");
+    $("#scatterplot_group4").css("color", "grey");
+    $("#scatterplot_group5").css("color", "grey");
+    $("#scatterplot_group" + i).css("color", "#337ab7");
+}
+</script>
+
+<hr>
+
 <style>
 #prev, #next {
     text-decoration: underline;
-    color: blue;
+    color: #337ab7;
 }
 #prev:hover, #next:hover {
     cursor: pointer;
@@ -145,7 +265,7 @@ for(nm in names(lt)) {
 }
 </style>
 
-Select an individual similarity heatmap by: <select id="select">
+Finally, you can select an individual similarity heatmap by: <select id="select">
   <option value='0'>Sim_Lin_1998</option>
   <option value='1'>Sim_Resnik_1999</option>
   <option value='2'>Sim_FaITH_2010</option>
@@ -185,12 +305,6 @@ Select an individual similarity heatmap by: <select id="select">
 <span id="prev" value="33">Prev method: Sim_Ancestor</span> <span id="curr">Curr method: Sim_Lin_1998</span> <span id="next" value="1">Next method: Sim_Resnik_1999</span> 
 
 <div id="image"><p><img src="image/go_bp_random_500_sim_Sim_Lin_1998.png" width="700" /></p></div>
-
-
-```{r, fig.width = 25, fig.height = 25}
-ind = sample(nrow(df2), 5000)
-pairs(df2[ind, names(group)], pch = ".", gap = 0, col = LCA_depth[ind]+1)
-```
 
 
 ```{r}

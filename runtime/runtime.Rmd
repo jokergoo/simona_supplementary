@@ -184,12 +184,14 @@ than 1000. To reduce the runtime, for each ontology, we only set 10 different
 numbers of terms to test, from 100 to `min(10000, dag_n_terms(dag))`. Here the
 result is already generated ans saved in `"runtime_OBOFoundry_all.RData"`. The
 script for generating this file is
-[run_time_OBOFoundry.R](run_time_OBOFoundry.R).
+[run_time_OBOFoundry.R](run_time_OBOFoundry.R). The plots for individual ontologies
+can be found in the ["OBO Foundry"](../OBOFoundry_gallery/OBOFoundry_viz.html) document.
 
-There are two objects in `"runtime_OBOFoundry_all.RData"`: `lt` which is a
-list of two-column data frames which contains number of random terms to test
-and corresponding runtime, `df` a data frame that contains meta-information of
-each ontology.
+There are two objects in `"runtime_OBOFoundry_all.RData"`: 
+
+- `lt`: a list of two-column data frames which contains number of random terms to test
+and corresponding runtime, 
+- `df`: a data frame that contains meta-information of each ontology.
 
 ```{r}
 load("runtime_OBOFoundry_all.RData")
@@ -199,7 +201,7 @@ head(lt[[1]])
 head(df)
 ```
 
-Different ontologies have different range of runtime. To make them comparible,
+Different ontologies have different ranges of runtime. To make them comparable,
 we scale values on x-axis (i.e. numbers of terms) and values on y-axis
 (runtime) both into the range of `[0, 1]`.
 
@@ -217,14 +219,16 @@ for(i in seq_along(lt)) {
 abline(a = 0, b = 1, col = "red", lty = 2)
 ```
 
+In the plot, if a curve bends more to the bottom left of the plotting region, it means
+the time complexity is worse.
 The plot shows for most of the ontologies, **simona** has a non-linear time
 complexity for calculating the similarities, but there are a few ontologies,
 **simona** shows a near-linear time complexity.
 
 Since the previous plot scales values on both x-axis and y-axis into `[0, 1]`,
 we can measure the difference to the linear time complexity by calculating the
-area difference of the curve to `y = x` (the diagonal line). If the curve bends
-more to the bottom left of the plotting region, it means the it has higher time complexity.
+area difference of the curve to `y = x` (the diagonal line, the red line). If the curve bends
+more to the bottom left of the plotting region, it means the it has worse time complexity.
 The following function `rel_diff()` calculates such relative time complexity difference.
 
 ```{r}
