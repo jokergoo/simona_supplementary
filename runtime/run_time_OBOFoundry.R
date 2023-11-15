@@ -2,15 +2,18 @@ benchmark_runtime = function(dag) {
     invisible(dag_depth(dag))  # depth will be cached
 
     n_terms = dag_n_terms(dag)
-    k = seq(100, min(10000, n_terms), length = 10)
+    k = seq(100, min(20000, n_terms), length = 50)
     k = floor(k)
     t = rep(NA_real_, length(k))
+    n_an = rep(0, length(k))
     for(i in seq_along(k)) {
         message(k[i], "/", max(k), "...")
         terms = sample(n_terms, k[i]) # numeric indicies are also allowed
-        t[i] = system.time(term_sim(dag, terms, method = "Sim_WP_1994"))[3]
+
+        n_an[i] = length(simona:::cpp_ancestors_of_a_group(dag, terms, include_self=T))
+        t[i] = system.time(LCA_term(dag, terms))[3]
     }
-    data.frame(k = k, t = t)
+    data.frame(k = k, t = t, n_an = n_an)
 }
 
 
@@ -75,16 +78,25 @@ for(i in seq_len(nrow(df))) {
     df[i, "depth_max"] = max(dag_depth(dag))
     df[i, "depth_q99"] = quantile(dag_depth(dag), 0.99)
 
+    nm = df$id[i]
+
     if(dag_n_terms(dag) < 1000) {
         png(qq("../OBOFoundry_gallery/image/OBOFoundry_@{nm}_runtime.png"), width = 600*1.5, height = 600*1.5, res= 72*1.5)
         plot(NULL, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, ann = FALSE)
         text(0.5, 0.5, "runtime analysis only for n_terms >= 1000", cex = 1.5)
         dev.off()
     } else {
-        lt[[ df$id[i] ]] = benchmark_runtime(dag)
+        lt[[nm]] = benchmark_runtime(dag)
+
         png(qq("../OBOFoundry_gallery/image/OBOFoundry_@{nm}_runtime.png"), width = 600*1.5, height = 600*1.5, res= 72*1.5)
-        plot(lt[[nm]], type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
-            main = paste0(nm, ", ", df[nm, "n_terms"], " terms"))
+        plot(lt[[nm]]$k, lt[[nm]]$t, xlab = "Number of random terms", ylab = "Runtime (sec)", 
+            main = paste0("Runtime for LCA_term(), ", nm, ": ", df[i, "n_terms"], " terms"))
+        x = c(0, lt[[nm]]$k)
+        y = c(0, lt[[nm]]$t)
+        fit = loess(y ~ x, span = 0.5)
+        lines(x, predict(fit))
+
+        legend("topleft", lty = 1, legend = "loess fit")
         dev.off()
     }
 }
@@ -95,4 +107,20 @@ df = df[names(lt), ]
 
 save(lt, df, file = "runtime_OBOFoundry_all.RData")
 
+
+### a binary tree ###
+lt_c2 = list()
+for(power in seq(10, 18)) {
+    dag = dag_random(n_children = 2, max = 2^power - 1, p = 0, power = -1)
+    lt_c2[[power - 9]] = benchmark_runtime(dag)
+}
+save(lt_c2, file = "runtime_hc_c2.RData")
+
+
+lt_c5 = list()
+for(power in seq(4, 7)) {
+    dag = dag_random(n_children = 5, max = (5^power - 1)/(5-1), p = 0, power = -1)
+    lt_c5[[power - 3]] = benchmark_runtime(dag)
+}
+save(lt_c5, df, file = "runtime_hc_c5.RData")
 

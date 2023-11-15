@@ -1,11 +1,12 @@
 ---
-title: "Runtime"
+title: "Supplementary File 2: Runtime performance"
 author: "Zuguang Gu ( z.gu@dkfz.de )"
 date: '`r Sys.Date()`'
 output: 
   html_document:
     css: main.css
     toc: true
+    fig_caption: true
 ---
 
 ```{r, echo = FALSE, message = FALSE}
@@ -20,7 +21,7 @@ knitr::opts_chunk$set(
 ```
 
 In this document, we benchmark the runtime performance of **simona** on ontologies
-with various sizes (i.e., on the levels of 1K, 10K, 100K, 1M).
+with various sizes (i.e., on the level of 1K, 10K, 100K, 1M).
 
 ```{r}
 library(simona)
@@ -77,21 +78,31 @@ dag = import_owl("~/workspace/ontology/OBOFoundry/pw/pw.owl",
 dag
 ```
 
+In the plot, a smooth line by loess fit is added.
+
 ```{r, eval = !file.exists("runtime_pw.rds")}
 df = benchmark_runtime(dag, by = 100)
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Pathway Ontology, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "Figure S2-1. Runtime performance of simona on the Pathway Ontology."}
 if(!file.exists("runtime_pw.rds")) {
     saveRDS(df, file = "runtime_pw.rds")
 } else {
     df = readRDS("runtime_pw.rds")
 }
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Pathway Ontology, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 ## Gene Ontology
@@ -107,19 +118,27 @@ dag
 
 ```{r, eval = !file.exists("runtime_gobp.rds")}
 df = benchmark_runtime(dag, by = 400, max = 20000)
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Gene Ontology (BP), ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "Figure S2-2. Runtime performance of simona on the Gene Ontology, biological process namespace."}
 if(!file.exists("runtime_gobp.rds")) {
     saveRDS(df, file = "runtime_gobp.rds")
 } else {
     df = readRDS("runtime_gobp.rds")
 }
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Gene Ontology (BP), ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 
@@ -127,7 +146,7 @@ plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)",
 
 The `chebi.obo` file is dowloaded from http://obofoundry.org/ontology/chebi.html. It contains several hundreds of thousands of terms.
 
-```{r}
+```{r, eval = F}
 dag = import_obo("~/workspace/ontology/OBOFoundry/chebi/chebi.obo",
     remove_rings = TRUE, remove_cyclic_paths = TRUE)
 dag
@@ -135,18 +154,26 @@ dag
 
 ```{r, eval = !file.exists("runtime_chebi.rds")}
 df = benchmark_runtime(dag, by = 400, max = 20000)
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Chemical Entities of Biological Interest, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "Figure S2-3. Runtime performance of simona on the Chemical Entities of Biological Interest."}
 if(!file.exists("runtime_chebi.rds")) {
     saveRDS(df, file = "runtime_chebi.rds")
 } else {
     df = readRDS("runtime_chebi.rds")
 }
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("Chemical Entities of Biological Interest, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 
@@ -154,43 +181,51 @@ plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)",
 
 The `ncbitaxon.owl` file is downloaded from http://obofoundry.org/ontology/ncbitaxon.html. It contains several millions of terms.
 
-```{r import_ncbitaxon}
+```{r import_ncbitaxon, eval = F}
 dag = import_owl("~/workspace/ontology/OBOFoundry/ncbitaxon/ncbitaxon.owl",
     remove_rings = TRUE, remove_cyclic_paths = TRUE)
 dag
 ```
 
 ```{r, eval = !file.exists("runtime_ncbitaxon.rds")}
-df = benchmark_runtime(dag, by = 500, max = 10000)
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+df = benchmark_runtime(dag, by = 400, max = 20000)
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("NCBI organismal classification, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.cap = "Figure S2-4. Runtime performance of simona on the NCBI organismal classification."}
 if(!file.exists("runtime_ncbitaxon.rds")) {
     saveRDS(df, file = "runtime_ncbitaxon.rds")
 } else {
     df = readRDS("runtime_ncbitaxon.rds")
 }
-plot(df$k, df$t, type = "b", xlab = "Number of terms", ylab = "runtime (sec)", 
+plot(df$k, df$t, xlab = "Numbers of random terms", ylab = "runtime (sec)", 
     main = paste0("NCBI organismal classification, ", dag_n_terms(dag), " terms"))
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
 ```
 
-## Benchmark on OBOFoundry ontologies
+## Benchmark on OBO Foundry ontologies
 
-Similarly, we benchmark all OBOFoundry ontologies with numbers of terms larger
-than 1000. To reduce the runtime, for each ontology, we only set 10 different
-numbers of terms to test, from 100 to `min(10000, dag_n_terms(dag))`. Here the
-result is already generated ans saved in `"runtime_OBOFoundry_all.RData"`. The
+Similarly, we benchmark all OBO Foundry ontologies with numbers of terms larger
+than 1000. We set 50 different
+numbers of random terms to test, from 100 to `min(20000, dag_n_terms(dag))`. Here the
+result is already generated and saved in `"runtime_OBOFoundry_all.RData"`. The
 script for generating this file is
 [run_time_OBOFoundry.R](run_time_OBOFoundry.R). The plots for individual ontologies
-can be found in the ["OBO Foundry"](../OBOFoundry_gallery/OBOFoundry_viz.html) document.
+can be found in the ["OBO Foundry gallery"](../OBOFoundry_gallery/OBOFoundry_viz.html) document.
 
 There are two objects in `"runtime_OBOFoundry_all.RData"`: 
 
-- `lt`: a list of two-column data frames which contains number of random terms to test
-and corresponding runtime, 
+- `lt`: a list of two-column data frames which contain numbers of random terms to test
+and corresponding runtime.
 - `df`: a data frame that contains meta-information of each ontology.
 
 ```{r}
@@ -205,9 +240,9 @@ Different ontologies have different ranges of runtime. To make them comparable,
 we scale values on x-axis (i.e. numbers of terms) and values on y-axis
 (runtime) both into the range of `[0, 1]`.
 
-```{r}
+```{r, fig.cap = "Figure S2-5. Compare runtime performance on various ontologies. Runtime performance is scaled into [0, 1] in the plot."}
 plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
-    xlab = "Number of terms, scaled", ylab = "runtime, scaled",
+    xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled",
     main = "Compare runtime performance of OBOFoundry ontologies")
 for(i in seq_along(lt)) {
     x = lt[[i]]$k
@@ -216,13 +251,16 @@ for(i in seq_along(lt)) {
     y = y/max(y)
     lines(x, y, col = "#00000080")
 }
-abline(a = 0, b = 1, col = "red", lty = 2)
+curve(x^1, from = 0, to = 1, col = 2, lty = 2, add = TRUE)
+curve(x^2, from = 0, to = 1, col = 3, lty = 2, add = TRUE)
+curve(x^3, from = 0, to = 1, col = 4, lty = 2, add = TRUE)
+legend("topleft", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
 ```
 
-In the plot, if a curve bends more to the bottom left of the plotting region, it means
-the time complexity is worse.
-The plot shows for most of the ontologies, **simona** has a non-linear time
-complexity for calculating the similarities, but there are a few ontologies,
+In the plot, if a curve bends more to the bottom right of the plotting region,
+it means the time complexity is worse. The plot shows for most of the
+ontologies, **simona** has a non-linear time complexity for calculating the
+similarities, close to $O(n^2)$, but there are a few ontologies, on which
 **simona** shows a near-linear time complexity.
 
 Since the previous plot scales values on both x-axis and y-axis into `[0, 1]`,
@@ -230,12 +268,20 @@ we can measure the difference to the linear time complexity by calculating the
 area difference of the curve to `y = x` (the diagonal line, the red line). If the curve bends
 more to the bottom left of the plotting region, it means the it has worse time complexity.
 The following function `rel_diff()` calculates such relative time complexity difference.
+The third argument `max_x` is used for setting the maximal number of random terms in 
+the benchmark procedures, which will be used later.
 
 ```{r}
-rel_diff = function(x, y) {
+rel_diff = function(x, y, max_x = NULL) {
     if(missing(y)) {
         y = x[[2]]
         x = x[[1]]
+    }
+
+    if(!is.null(max_x)) {
+        l = x <= max_x
+        x = x[l]
+        y = y[l]
     }
 
     od = order(x)
@@ -252,21 +298,363 @@ rel_diff = function(x, y) {
 }
 ```
 
-We find the time complexity seems to have a negative relation to the numbers of terms,
-where when the number of terms increases, the time complexity is more near linear complexity.
+We find the time complexity on different ontologies is quite stable around $O(n^2)$, but
+for some large ontologies, the time complexity decreases close to linear.
 
-```{r}
+```{r, fig.cap = "Figure S2-6. Relative time complexity to linear complexity. Ontologies with more than 100k terms are highlighted by their names."}
 df$rel_diff = sapply(lt, rel_diff)
 
 plot(df$n_terms, df$rel_diff, log = "x",
     xlab = "Number of terms", 
     ylab = "Relative difference to linear time complexity")
-abline(h = 0, lty = 2, col = "grey")
+abline(h = 0, lty = 2, col = 2)
+abline(h = 1/6, lty = 2, col = 3)
+abline(h = 1/4, lty = 2, col = 4)
 l = df$n_terms > 100000
 text(df$n_terms[l], df$rel_diff[l], df$id[l], 
     adj = c(1, -0.4), col = "blue", cex = 0.8)
+legend("topright", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
 ```
 
+However, this does not mean large ontology has better time complexity than
+smaller ones. Since in the benchmark procedures, the possible maximal number
+of random terms to pick (let's call it `max_pick`) is set to 20000, with large
+ontologies with number of terms far larger than 20000, the number of picked
+terms is only a tiny proportion of total terms, thus the close-quadratic complexity
+is not obviously observable. Or when the number of terms picked is far smaller
+than the total number of terms, the time complexity is close to linear.
+
+We can validate it by setting `max_pick` to small values such as 5000 and 1000, shown in the following plots.
+When `max_pick` becomes smaller, such reduction to linear complexity can be observed in more ontologies.
+
+```{r, echo = FALSE, fig.width = 10, fig.height = 10, fig.cap = "Figure S2-7. Compare the effect of max_pick on the time complexity."}
+par(mfrow = c(2, 2))
+
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+    xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled",
+    main = "max_pick = 5000")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    l = x <= 5000
+    x = x[l]
+    y = y[l]
+    x = x/max(x)
+    y = y/max(y)
+    lines(x, y, col = "#00000080")
+}
+abline(a = 0, b = 1, col = 2, lty = 2)
+curve(x^2, from = 0, to = 1, col = 3, lty = 2, add = TRUE)
+curve(x^3, from = 0, to = 1, col = 4, lty = 2, add = TRUE)
+legend("topleft", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
+
+df$rel_diff = sapply(lt, rel_diff, max_x = 5000)
+plot(df$n_terms, df$rel_diff, log = "x",
+    xlab = "Number of terms", 
+    ylab = "Relative difference to linear time complexity",
+    main = "max_pick = 5000")
+abline(h = 0, lty = 2, col = 2)
+abline(h = 1/6, lty = 2, col = 3)
+abline(h = 1/4, lty = 2, col = 4)
+l = df$n_terms > 100000
+text(df$n_terms[l], df$rel_diff[l], df$id[l], 
+    adj = c(1, -0.4), col = "blue", cex = 0.8)
+legend("topright", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
+
+
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+    xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled",
+    main = "max_pick = 1000")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    l = x <= 1000
+    x = x[l]
+    y = y[l]
+    x = x/max(x)
+    y = y/max(y)
+    lines(x, y, col = "#00000080")
+}
+abline(a = 0, b = 1, col = 2, lty = 2)
+curve(x^2, from = 0, to = 1, col = 3, lty = 2, add = TRUE)
+curve(x^3, from = 0, to = 1, col = 4, lty = 2, add = TRUE)
+legend("topleft", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
+
+
+df$rel_diff = sapply(lt, rel_diff, max_x = 1000)
+plot(df$n_terms, df$rel_diff, log = "x",
+    xlab = "Number of terms", 
+    ylab = "Relative difference to linear time complexity",
+    main = "max_pick = 1000")
+abline(h = 0, lty = 2, col = 2)
+abline(h = 1/6, lty = 2, col = 3)
+abline(h = 1/4, lty = 2, col = 4)
+l = df$n_terms > 100000
+text(df$n_terms[l], df$rel_diff[l], df$id[l], 
+    adj = c(1, -0.4), col = "blue", cex = 0.8)
+legend("topright", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
+```
+
+In the comparison we performed previously, we fix the ontology and check
+the runtime performance when increasing the number of terms used for calculating similarities.
+Next we do in another dimension. We fix the number of random terms and we check
+the runtime performance on the size of the ontology.
+
+We define the following `get_t_by_k()` function. For each ontology, the
+runtime $t$ of a given value of terms denoted as $k$ is predicted by a loess fit on number of terms
+and the corresponding runtime.
+
+
+```{r}
+get_t_by_k = function(k) {
+    sapply(lt, function(df) {
+        i0 = which(df$k == k)
+        if(length(i0)) {
+            df$t[i0]
+        } else {
+            ind1 = which(df$k < k)
+            if(length(ind1) == 0) { # k is smaller than all df$k
+                return(NA)
+            }
+            i1 = max(ind1)
+            ind2 = which(df$k > k)
+            if(length(ind2) == 0) { # k is larger than all df$k
+                return(NA)
+            }
+            i2 = min(ind2)
+
+            x = c(0, df$k)
+            y = c(0, df$t)
+            fit = loess(y ~ x, span = 0.5)
+            predict(fit, k)
+         
+        }
+    })
+}
+```
+
+For example, if we randomly sample 500 terms from an ontology, the runtime performance
+on the size of the ontology would be:
+
+```{r, fig.cap = "Figure S2-8. Runtime preformance on the size of ontologies. The number of terms for calculating semantic similarities is fixed to 500."}
+t500 = get_t_by_k(500)
+plot(df$n_terms, t500, log = "xy",
+    xlab = "Size of the ontology", ylab = "Runtime (sec)", 
+    main = "Randomly sample 500 terms from each ontology")
+```
+
+In a double-log coordinate system, the runtime has a linear
+relation to the size of the ontology. We can perform a simple linear
+regression:
+
+```{r}
+lm(log(t500) ~ log(df$n_terms))
+```
+
+
+```{r, echo = FALSE}
+fit = lm(log(t500) ~ log(df$n_terms))
+coef = round(coef(fit), 2)
+```
+
+Let's denote the runtime as $t$ and the size of the ontology as $n$, then they have a
+linear relation: $\log(t) = `r coef[2]`\log(n) - `r -coef[1]`$. The slope is
+less than one, which means, if the ontology size increases by 2x, the runtime
+only increases by $2^{`r coef[2]`}$ (`r round(2^coef[2], 2)`) times.
+
+
+We can measure the relation between runtime and ontology size for a list of different
+$k$. The next function `compare_runtime_by_k()` calculates the runtime, makes the plot and 
+performs linear regression for a given $k$. It returns the slope from the linear regression model.
+
+```{r}
+library(GetoptLong)
+compare_runtime_by_k = function(k) {
+    tt = get_t_by_k(k)
+    plot(df$n_terms, tt, log = "xy",
+        xlab = "n / Size of the ontology", ylab = "t / Runtime (sec)", 
+        main = qq("Randomly sample @{k} terms from each ontology"))
+    fit = lm(log(tt) ~ log(df$n_terms))
+    coef = round(coef(fit), 2)
+    coef[1] = ifelse(sign(coef[1]) == 1, paste0("+", coef[1]), coef[1])
+    text(min(df$n_terms), max(tt, na.rm = TRUE), 
+        qq("log(t) = @{coef[2]}*log(n)@{coef[1]}"), adj = c(0, 1))
+    coef(fit)[2]
+}
+```
+
+The list of $k$ we will compare is defined as follows.
+
+```{r}
+k = c(500, 600, 700, 800, 900, 1000, 2000, 3000, 
+      4000, 5000, 6000, 7000, 8000, 9000, 10000)
+```
+
+We make the plot for every $k$:
+
+```{r, animation.hook="gifski", fig.cap = "Figure S2-9. Runtime preformance on the size of ontologies, on a list of different k."}
+coef = sapply(k, compare_runtime_by_k)
+```
+
+The slope coeffcient from the linear regression model measures the increasing rate of runtime
+when increasing the size of the ontology. We can check how fast the runtime increases when randomly
+sample different numbers of terms.
+
+```{r, fig.cap = "Figure S2-10. The increasing rate of runtime when increase the ontology size at different k."}
+plot(k, coef, xlab = "Numbers of random terms", ylab = "coef")
+```
+
+It shows if randomly sample more terms from the ontology, the runtime increases slower and slower than
+the ontology size. 
+
+## Algorithm
+
+First we describe the data structures:
+
+1. All terms are represented in integer indices: `c(1, 2, 3, ..., n_all)`.
+2. The parent/child relations are represented as two lists `lt_parents` and
+   `lt_children`. `lt_parents[[i]]` is a vector of integer indices of its
+   parent terms. E.g. if `lt_parents[[6]] = c(3, 4, 5)`, it means term 3, 4, 5
+   are parents of term 6. If you want to see term 3's parents, directly go to
+   `lt_parents[[3]]`. The structure is the same for `lt_children` where
+   `lt_children[[i]]` is a vector of integer indicies of its child terms. Both
+   `lt_parents` and `lt_children` have length of `n_all`. If the vector of
+   `lt_parents[[i]]` is empty, it means term `i` is the root. If the vector of
+   `lt_children[[i]]` is empty, it means term `i` is a leaf term.
+3. In the following code, a variable with name starting with `l_` is a logical
+   vector with length of `n_all`. E.g. a vector `l_all_ancestors` stores
+   whether term `i` is an ancestor term. Also to simplify the description of the
+   algorithm, we take the `l_*` vectors as pointers where a value change in place 
+   affects everywhere `l_*` variables are used.
+
+
+We describe the algorithm for looking for LCA terms. The algorithm contains two steps:
+
+**Input**: a vector of terms, already converted to integer indices.
+**Output**: A matrix of depth of LCA terms.
+
+**Step 1**: find all ancestors of the given group of terms, including the
+terms themselves. They are union of ancestors of individual terms. We need to
+define three functions in this step.
+
+```r
+# nodes: an integer vector
+ancestors_of_a_group = function(nodes) {
+    l_all_ancestors = rep(FALSE, n_terms)
+    for(node in nodes) {
+        l_all_ancestor[node] = TRUE  # include the nodes themselves
+        # it is the same as using `add_parents`, but we want to make it clear
+        # that this is the union of ancestors of individual nodes
+        add_ancestors(node, l_all_ancestor)
+    }
+    return(l_all_ancestor)
+}
+
+# node: a single integer scalar
+# l_all_ancestor: a logical vector with length n_all (let's treat it as a pointer)
+add_ancestors = function(node, l_all_ancestor) {
+    add_parents(node, l_all_ancestor)
+}
+
+# node: a single integer scalar
+# l_all_ancestor: a logical vector with length n_all (let's treat it as a pointer)
+add_parents = function(node, l_all_ancestor) {
+    parents = lt_parents[[node]] # a vector of integer indicies
+    if(length(parents) > 0) {
+        l_all_ancestor[parents] = TRUE
+        for(p in parents) {
+            add_parents(node, l_all_ancestor)
+        }
+    }
+}
+
+l_all_ancestors = ancestors_of_a_group(nodes)
+all_ancestors = which(l_all_ancestors)
+```
+
+Looking for ancestors is applied recursively by `add_parents()`. Note again, we treat
+`l_all_ancestor` as a pointer so that it can be updated in the recursive parent lookup.
+
+Step 1 generates two variables `l_all_ancestors` which is a logical vector
+representing whether term `i` is an ancestor term and `all_ancestors` which is
+the corresponding integer indices in `l_all_ancestors` of the `TRUE` values.
+
+**Step 2**: All the common ancestors of `nodes` only exist in the set of
+`l_all_ancestors` or `all_ancestors`. We look for LCA in a top-down manner.
+
+For each ancestor term `an` in `all_ancestors`, we first get its offspring
+terms but restricted in the background set `l_all_ancestors`. For a pair of
+terms in the offspring set, if both of them are also in `nodes`, the ancestor
+`an` is a common ancestor of the two terms. Then we compare the depth of `ca`
+and depth previously saved for the two offspring terms. We update it to the
+depth of `ca` if it is larger than the previous one.
+
+Similarly, we need to define functions to look for offsprings, but this time
+we add another constrains of the backgroud. The implemntation is very similar as
+`add_ancestors()`.
+
+```r
+# nodes: an integer vector
+# l_background: a logical vector with length n_all
+offspring_within_background = function(node, l_background) {
+    l_all_offspring = rep(FALSE, n_terms)
+    l_all_offspring[node] = TRUE # include the term itself
+    add_children(node, l_all_offspring, l_background)
+}
+
+# node: a single integer scalar
+# l_all_offspring: a logical vector with length n_all (a pointer)
+# l_background: a logical vector with length n_all
+add_children = function(node, l_all_offspring, l_background) {
+    children = lt_children[[node]] # a vector of integer indicies
+    if(length(children) > 0) {
+        l_all_offspring[children] = TRUE
+        for(ch in children) {
+            if(l_background[ch]) { # only continue if the child is in the background
+                add_children(node, l_all_offspring, l_background)
+            }
+        }
+    }
+}
+```
+
+We pre-compute two variables. `l_nodes` corresponds to `nodes` but is a
+logical vector where the i<sup>th</sup> element is `TRUE` if term `i` is in `nodes`.
+`all_depth` is the depth of all terms in the ontology.
+
+`LCA_depth` is the matrix that stores the depth of LCA terms. The initial values are set to zero.
+
+```r
+n = length(nodes)
+LCA_depth = matrix(0, n, n)
+diag(LCA_depth) = all_depth[nodes]
+
+for(an in all_ancestors) {
+    l_offspring = offspring_within_background(an, l_all_ancestors)
+    offspring = which(l_offspring)
+    no = length(offspring)
+
+    for(i in 1:(no-1)) {
+        if(l_nodes[ offspring[i] ]) {
+            for(j in (i+1):no) {
+                if(l_nodes[ offspring[j] ]) {
+                    if(LCA_depth[i, j] < all_depth[an]) {
+                        LCA_depth[i, j] = all_depth[an]
+                        LCA_depth[j, i] = LCA_depth[i, j]
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+In this three levels of for-loop, in the triple (`ca`, `offspring[i]`,
+`offspring[j]`), `an` is always an common ancestor of `offspring[i]`,
+`offspring[j]`, while in other implementations, computations are also spent on
+the case where `an `is not the common ancestor.
+
+The algorithm is also workable for finding MICA or calculating pairwise distance in the ontology.
 
 ## Session info
 

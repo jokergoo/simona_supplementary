@@ -1,5 +1,5 @@
 ---
-title: "OBO Fountry"
+title: "Supplementary File 6. OBO Foundry gallery"
 author: "Zuguang Gu ( z.gu@dkfz.de )"
 date: '`r Sys.Date()`'
 output: 
@@ -39,8 +39,8 @@ knitr::opts_chunk$set(
 </style>
 
 [OBO Foundry](http://obofoundry.org/) is a database of public biological
-ontologies. In this document, we import all the ontologies on OBO Foundry and
-generate circular visualizations on them.
+ontologies. In this document, we import all ontologies on OBO Foundry and
+generate circular visualization, similarity heatmap and runtime performance on them.
 
 Columns in the table:
 
@@ -53,7 +53,7 @@ Columns in the table:
 - `ch_avg`: Average number of child terms.
 - `asp1`: `width/height`, where `width` is the largest number of terms on a specific distance to root (i.e. `max(table(largest_dist_to_root(dag)))`).
 - `asp2`: `width/height`, where `width` is the largest number of terms on a specific distance to root (i.e. `max(table(shortest_dist_to_root(dag)))`).
-- `d_q99`: 99% quantile of depth of terms.
+- `d_max`: Maximal depth of terms.
 
 Script for formatting the table and generating the plots is [OBOFoundry.R](OBOFoundry.R).
 
@@ -70,9 +70,10 @@ df$title = qq("@{df$title} <span class='show_image' onclick='show_image(\"@{id}\
 df$avg_parents = round(df$avg_parents, 1)
 df$avg_children = round(df$avg_children, 1)
 df$is_tree = ifelse(df$n_terms == df$n_relations + 1, "tree", "")
-df = df[, c("id", "title", "n_terms", "n_relations", "is_tree", "avg_parents", "avg_children", "asp1", "asp2", "depth_q99")]
+df = df[, c("id", "title", "n_terms", "n_relations", "is_tree", "avg_parents", "avg_children", "asp1", "asp2", "max_depth")]
+df = df[order(-df$n_terms), ]
 datatable(df, escape = FALSE, rownames = FALSE,
-    colnames = c("id", "title", "n_terms", "n_relations", "is_tree", "pa_avg", "ch_avg", "asp1", "asp2", 'd_q99'))
+    colnames = c("id", "title", "n_terms", "n_relations", "is_tree", "pa_avg", "ch_avg", "asp1", "asp2", 'd_max'))
 ```
 
 <hr>
@@ -100,7 +101,7 @@ datatable(df, escape = FALSE, rownames = FALSE,
 </ul>
 <div id="circular">
 <img id="image1" src="image/OBOFoundry_ado.png" /></div>
-<div id="heatmap" style="display:none;"><img id="image2" src="image/OBOFoundry_ado_heatmap.png" /></div>
+<div id="heatmap" style="display:none;"><p>The similarity is calculated by the *WP_1994* method.</p><img id="image2" src="image/OBOFoundry_ado_heatmap.png" /></div>
 <div id="runtime" style="display:none;"><img id="image3" src="image/OBOFoundry_ado_runtime.png" /></div>
 </div>
 

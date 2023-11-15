@@ -1,11 +1,12 @@
 ---
-title: "Compare topology and annotation-based semantic similarity methods"
+title: "Supplementary File 5. Compare topology and annotation-based semantic similarity methods"
 author: "Zuguang Gu ( z.gu@dkfz.de )"
 date: '`r Sys.Date()`'
 output: 
   html_document:
     css: main.css
     toc: true
+    fig_caption: true
 ---
 
 ```{r, echo = FALSE, message = FALSE}
@@ -114,12 +115,21 @@ term in red, and the LCA term in blue. `"GO:0008150"` is the root of the DAG
 and the LCA term `"GO:1901701"` although are not in ancestor/offspring
 relations, are still close in the DAG.
 
-```{r, fig.width = 4, fig.height = 4}
+
+<style>
+.grViz {
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+</style>
+
+```{r, fig.width = 5, fig.height = 5, fig.cap = "Figure S5-1. Sub-DAG of ancestors of two GO terms of GO:0010035 and GO:1901701."}
 dag2 = dag[, c(term1[1], term2[1])]
 color = c("red", "blue")
 names(color) = c(term1[1], term2[1])
 
-dag_graphviz(dag2, color = color)
+dag_graphviz(dag2, node_param = list(color = color))
 ```
 
 
@@ -131,7 +141,7 @@ distance between MICA and LCA taking DAG as _undirected_. The function
 passing through their nearest common ancestor (NCA).
 
 
-```{r}
+```{r, fig.cap = "Figure S5-2. Numbers of term pairs whose MICA and LCA have different distances."}
 term_unique = unique(c(term1, term2))
 dist = shortest_distances_via_NCA(dag, term_unique) # a symmetric matrix with terms as names
 x = numeric(length(term1))
@@ -144,7 +154,7 @@ barplot(table(x),
 ```
 
 The barplot shows 76.3% of the 2287 term pairs, their MICA and LCA are
-siblings (i.e. sharing the same parent). Most of the MICA and LCA are also close in
+siblings (i.e. sharing the same parent, with undirected distance of 2). Most of the MICA and LCA are also close in
 the DAG for other term pairs.
 
 ## Semantic similarity based on MICA and LCA
@@ -154,10 +164,12 @@ MICA method and the LCA method are very similar. In most of the time, they
 are the same set or very close in the DAG.
 
 If thinking depth as a generalized measure of information content where deeper
-in the DAG a larger value of of depth a term has, In this way, LCA is also a
-type of MICA. we compare the global IC_annotation and depth.
+in the DAG a larger value of of depth a term has (the depth of a parent is
+always smaller than the depth of its child terms because the depth is the
+longest distance from root), In this way, LCA is also a type of MICA. we
+compare the relations the global IC_annotation and depth.
 
-```{r, fig.width = 10, fig.height = 5}
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5-3. Relations between IC_annotation and depth. Left: boxplots of IC_annotation on each depth; Right: Numbers of terms on each depth."}
 ic = term_IC(dag, method = "IC_annotation")
 depth = dag_depth(dag)
 
@@ -188,7 +200,7 @@ and $\mathrm{len}_c(r, a)$ is the longest distance from $r$ to $a$, passing thro
 
 Note that the following two heatmaps share the same row orders and column orders.
 
-```{r, fig.width = 10, fig.height = 5}
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5-4. Heatmap of semantic similarities from the Lin 1998 method and WP 1994 method."}
 mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
 mat2 = term_sim(dag, go_id, method = "Sim_WP_1994")
 
@@ -212,7 +224,7 @@ general shows overall stronger similarity signals, but also higher level of
 
 And the scatter plot of the similarity values from the two methods:
 
-```{r}
+```{r, fig.cap = "Figure S5-5. Scatterplot of semantic similarities calculated by the Lin 1998 method and WP 1994 method."}
 plot(mat1[lower.tri(mat1)], mat2[lower.tri(mat2)], pch = 16, col = "#00000010",
     xlab = "Sim_Lin_1998 / IC_annotation / MICA", ylab = "Sim_WP_1994 / depth / LCA")
 ```

@@ -46,15 +46,6 @@ df$asp2 = -1
 df$max_depth = -1
 df$method = ""
 
-transparency_fun = function(n_relations) {
-	if(n_relations < 3000) {
-		0.5
-	} else if(n_relations > 50000) {
-		0.95
-	} else {
-		(0.95-0.5)/(50000 - 3000)*(n_relations - 5000) + 0.5
-	}
-}
 
 for(i in seq_len(nrow(df))) {
 	qqcat("\n===============@{i}, @{basename(df$file[i])}===========\n")
@@ -95,7 +86,7 @@ for(i in seq_len(nrow(df))) {
 	df[i, "depth_q99"] = quantile(dag_depth(dag), 0.99)
 
 	png(qq("image/OBOFoundry_@{df[i, 'id']}_foo.png"), width = 1000*1.5, height = 800*1.5, res = 72*1.5)
-	dag_circular_viz(dag, legend_labels_from = "name", node_transparency = 0.5, edge_transparency = transparency_fun(df[i, "n_relations"]))
+	dag_circular_viz(dag, partition_by_size = round(dag_n_terms(dag)/5))
 	dev.off()
 
 	system(qq("pngquant --speed=10 --quality=60 image/OBOFoundry_@{df[i, 'id']}_foo.png -o image/OBOFoundry_@{df[i, 'id']}.png --force"))
