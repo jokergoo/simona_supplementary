@@ -95,8 +95,8 @@ Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
 ```
 
 
-We next remove the following term sim methods which show very different patterns
-to other term sim methods, and remake the heatmap.
+We next remove the following similarity methods which show very different patterns
+to other methods, and remake the heatmap.
 
 ```{r, fig.width = 8, fig.height = 8, fig.cap = "Figure S4-2. Correlation heatmap of semantic similarities after removing seven methods that generate very different patterns from other methods. Please note the color scale is differennt from Figure S4-1."}
 ind = which(colnames(df) %in% c("Sim_Jiang_1997", "Sim_HRSS_2013", "Sim_universal",
@@ -110,8 +110,8 @@ Heatmap(cor2, name = "correlation", cluster_rows = hc, cluster_columns = hc,
     column_title = "Semantic similarity correlation, GO BP")
 ```
 
-We can observe that all the term sim methods can be put into five groups. We manually add
-group labels to these term sim methods:
+We can observe that all the similarity methods can be put into five groups. We manually add
+group labels to these methods:
 
 ```{r}
 group = c("Sim_Shen_2010"        = 1,
@@ -161,7 +161,7 @@ ggplot(loc, aes(x, y, label = method, col = factor(group))) +
     geom_point() + 
     geom_text_repel(show.legend = FALSE, size = 3) +
     labs(x = "Dimension 1", y = "Dimension 2", col = "Group") +
-    ggtitle("MDS of similarity methods on random 500 GO terms")
+    ggtitle("MDS on similarity methods on random 500 GO terms")
 ```
 
 
@@ -185,7 +185,16 @@ for(nm in names(lt)) {
 
 
 Following are the pairwise scatterplots of semantic similarities from two term similarity methods. The five groups
-are from the heatmap in Figure S4-2.
+are from the heatmap in Figure S4-2. Since each point correspond to a term-pair, the color of the point
+corresponds to the depth of their LCA term. Note that for those methods based on MICA terms, as shown in the document ["Compare topology and annotation-based semantic similarity methods"](../compare_topo_anno/compare_topo_anno.html), majority of LCA terms and MICA terms are the same.
+
+The methods in the five groups are summarized as follows:
+
+- Group 1: methods that integrate information content. In the comparison we did here, it is IC_annotation.
+- Group 2: so-called "hybrid" methods.
+- Group 3: methods that based on the depth of terms (e.g. LCA terms).
+- Group 4: methods that aggregate from all common ancestor terms.
+- Group 5: methods that based on the distance of two terms in the DAG.
 
 ```{r, eval = FALSE, echo = FALSE}
 LCA_depth = LCA_depth(dag, go_id)
@@ -232,7 +241,7 @@ for(i in 1:5) {
 </ul>
 <div class="figure" style="text-align:center">
 <img id="scatterplot_image" src="image/scatterplot_group_1.png" />
-<p class="caption">Figure S4-4. Pairwise comparison between various similarity methods on 500 random GO BP terms. The five groups are defined in the heatmap.</p>
+<p class="caption">Figure S4-4. Pairwise comparison between various similarity methods on 500 random GO BP terms. The five groups are defined in Figure S4-2.</p>
 </div>
 </div>
 

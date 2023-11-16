@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 ```
 
 Other R packages for semantic similarity analysis are only based on gene
-annotations, thus mainly applicable on the Gene Ontology. Besides
+annotations, thus mainly applicable on Gene Ontology. Besides
 annotation-based methods, **simona** also supports a large number of methods
 based on the topology of GO DAG, with no need of external annotation data. In
 this document, we compare the semantic similarity calculated based on gene
@@ -37,7 +37,7 @@ dag
 ```
 
 Since some GO terms have no gene annotated and the information contents (IC)
-cannot be calculated, we random sample 500 GO terms that have genes annotated
+cannot be calculated, we random sample 500 GO terms that have genes annotations
 (i.e. with IC values).
 
 ```{r}
@@ -124,7 +124,7 @@ relations, are still close in the DAG.
 }
 </style>
 
-```{r, fig.width = 5, fig.height = 5, fig.cap = "Figure S5-1. Sub-DAG of ancestors of two GO terms of GO:0010035 and GO:1901701."}
+```{r, fig.width = 5, fig.height = 5, fig.cap = "Figure S5-1. Sub-DAG of ancestors of the MICA term GO:0010035 and the LCA term GO:1901701."}
 dag2 = dag[, c(term1[1], term2[1])]
 color = c("red", "blue")
 names(color) = c(term1[1], term2[1])
@@ -164,17 +164,17 @@ MICA method and the LCA method are very similar. In most of the time, they
 are the same set or very close in the DAG.
 
 If thinking depth as a generalized measure of information content where deeper
-in the DAG a larger value of of depth a term has (the depth of a parent is
+in the DAG, a larger value of of depth a term will have (note the depth of a parent is
 always smaller than the depth of its child terms because the depth is the
 longest distance from root), In this way, LCA is also a type of MICA. we
-compare the relations the global IC_annotation and depth.
+compare the relations between the global IC_annotation and depth.
 
 ```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5-3. Relations between IC_annotation and depth. Left: boxplots of IC_annotation on each depth; Right: Numbers of terms on each depth."}
 ic = term_IC(dag, method = "IC_annotation")
 depth = dag_depth(dag)
 
 par(mfrow = c(1, 2))
-# because depth is discrete, we use boxplot to visualize the correlation
+# because depth is discrete, we use boxplot to visualize the relations
 boxplot(ic ~ depth, xlab = "Depth", ylab = "IC_annotation")
 barplot(table(depth), xlab = "Depth", ylab = "Number of terms")
 ```
@@ -200,6 +200,26 @@ and $\mathrm{len}_c(r, a)$ is the longest distance from $r$ to $a$, passing thro
 
 Note that the following two heatmaps share the same row orders and column orders.
 
+<style>
+#order_click_a li {
+    padding-right:20px;
+    cursor: pointer;
+    display: inline-block;
+    color: #337ab7;
+}
+#order_click_a {
+    padding-inline-start: 0px;
+    margin-top: 20px;
+}
+</style>
+
+<ul id="order_click_a">
+<li><a id="order1_click" style="color:#337ab7">Use Sim_Lin_1998 order</a></li>
+<li><a id="order2_click" style="color:grey">Use Sim_WP_1994 order</a></li>
+</ul>
+
+<div id="order1">
+
 ```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5-4. Heatmap of semantic similarities from the Lin 1998 method and WP 1994 method."}
 mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
 mat2 = term_sim(dag, go_id, method = "Sim_WP_1994")
@@ -218,6 +238,47 @@ Heatmap(mat2, name = "similarity_wp",
         column_title = "Sim_WP_1994, based on LCA/depth")
 ```
 
+</div>
+
+<div id="order2" style="display:none;">
+
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5-4. Heatmap of semantic similarities from the Lin 1998 method and WP 1994 method."}
+mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
+mat2 = term_sim(dag, go_id, method = "Sim_WP_1994")
+
+od = hclust(dist(mat2))$order
+
+library(ComplexHeatmap)
+
+Heatmap(mat1, name = "similarity_lin", 
+        show_row_names = FALSE, show_column_names = FALSE,
+        row_order = od, column_order = od,
+        column_title = "Sim_Lin_1998, based on MICA/IC_annotation") +
+Heatmap(mat2, name = "similarity_wp", 
+        show_row_names = FALSE, show_column_names = FALSE,
+        row_order = od, column_order = od,
+        column_title = "Sim_WP_1994, based on LCA/depth")
+```
+
+</div>
+
+<script>
+$( function() {
+    $( "#order1_click" ).click(function() {
+        $("#order1").show();
+        $("#order2").hide();
+        $("#order1_click").css("color", "#337ab7");
+        $("#order2_click").css("color", "grey");
+    });
+    $( "#order2_click" ).click(function() {
+        $("#order2").show();
+        $("#order1").hide();
+        $("#order2_click").css("color", "#337ab7");
+        $("#order1_click").css("color", "grey");
+    })
+});
+</script>
+
 The two heatmaps show very similar patterns. Heatmap under `"Sim_WP_1994"` in
 general shows overall stronger similarity signals, but also higher level of
 "inter-block" signals.
@@ -235,18 +296,18 @@ aggregation of gene annotations from offspring terms, which actually also
 takes account of the DAG topology.
 
 
-Finally, Let's take a simplified example to show the relations between IC_annotation and depth.
+Finally, let's make a simplified example to show the relations between IC_annotation and depth.
 Consider an ontology with a binary tree structure, i.e. each term has two children and each term
-has an unique gene annotated. All the leaf terms in the ontology have depth of $d$. Then the total number
-of genes annotated to the root is $2^{d+1}-1$. For a term with height $h (0 \leq h \leq d)$, the number
-of genes annotated is $2^{d-h+1}-1$, then the IC_annotation would be:
+has an unique gene annotated. All the leaf terms in the ontology have depth of $d_\mathrm{max}$. Then the total number
+of genes annotated to the root is $2^{d_\mathrm{max}+1}-1$. For a term with depth $d$ where $0 \leq d \leq d_\mathrm{max}$, the number
+of genes annotated to it is $2^{d_\mathrm{max}-d+1}-1$, then IC_annotation of this term would be:
 
 $$ 
 \begin{align*}
-\mathrm{IC}_\mathrm{annotation} & = -\log\left(\frac{2^{d-h + 1} - 1}{2^{d+1} - 1} \right) \\
-            & \approx  -\log\left(\frac{2^{d-h + 1}}{2^{d+1}} \right) \\
-            & = -\log\left(2^{-h} \right ) \\
-            & = h * \log2
+\mathrm{IC}_\mathrm{annotation} & = -\log\left(\frac{2^{d_\mathrm{max}-d + 1} - 1}{2^{d_\mathrm{max}+1} - 1} \right) \\
+            & \approx  -\log\left(\frac{2^{d_\mathrm{max}-d + 1}}{2^{d_\mathrm{max}+1}} \right) \\
+            & = -\log\left(2^{-d} \right ) \\
+            & = d * \log2
 \end{align*} $$
 
 ## Session info

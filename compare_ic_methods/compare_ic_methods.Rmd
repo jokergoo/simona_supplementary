@@ -105,11 +105,11 @@ ggplot(loc, aes(x, y, label = method, col = factor(group))) +
     ggtitle("MDS based on the correlation between ICs from different IC methods")
 ```
 
-Similar as the heatmap, the two methods of `"IC_Wang_2007"` and `"IC_universal"` 
+Similar to the heatmap, the two methods of `"IC_Wang_2007"` and `"IC_universal"` 
 are quite far from other points in the MDS plot.
 
-We can directly compare different IC methods with pairwise scatter plots, colored by 
-depths of terms.
+We can directly compare different IC methods with pairwise scatterplots, colored by 
+the depths of terms, which helps to see how term depths are weighted in different IC methods.
 
 ```{r, fig.width = 12, fig.height = 12, fig.cap = "Figure 3-3. Pairwise comparison between various IC methods on GO BP terms."}
 col = c("IC_height"        = 2,

@@ -41,7 +41,7 @@ comparison we will apply later, we only look at that IC method based on gene
 annotations, taking human as the organism.
 
 There might be functions having similar names in different packages. To reduce
-the ambiguity, we add the `package::` prefix when calling functions in
+the ambiguity, we add the `package::` prefix when calling functions from
 corresponding packages.
 
 ## Description of tools
@@ -105,7 +105,7 @@ the gene annotation source. All relation types of `"is_a"`, `"part_of"`,
 included.
 
 On each GO term, **GOSemSim** takes the number of **all** genes annotated to
-the term and to all its offspring terms **without taking the unique genes**.
+the term and to all its offspring terms **without making genes unique**.
 Also note, a gene can be annotated to a GO term duplicatedly with multiple
 evidence codes (e.g. the gene with Entrez ID "994" is annotated to a GO term
 "GO:0000086" twice with evidence code "IBA" and "TAS", check
@@ -156,7 +156,7 @@ from values in `IC`.
 head(GOSimEnv$IC)
 ```
 
-We have to manually update the IC values that are internally used. Now the internal ICs are
+We have to manually update the IC values that will be internally used. Now the internal ICs are
 the same as in `IC`:
 
 ```{r}
@@ -186,7 +186,7 @@ length(go_id_common)
 
 ## Compare Information contents
 
-We simply make scatterplot for every pair of tools.
+We simply make scatterplots for every pair of tools.
 
 ```{r, fig.width = 10, fig.height = 10, fig.cap = "Figure S1-2. Pairwise comparison of ICs of GO BP, calculated by simona, ontologyIndex, GOSemSim and GOSim."}
 df = data.frame(
@@ -278,7 +278,7 @@ The next plots show that **GOSemsim** over-estimates the IC values more
 for the terms with smaller depth (i.e. closer to the root and have more accumulation from offsprings).
 
 
-```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S1-3. Systematic shift of IC values from simona to GOSemSim. Left: over-estimatation on the IC values with relation to the depth. Right: number of terms on each depth."}
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S1-3. Systematic shift of IC values from simona to GOSemSim. Left: over-estimation on the IC values on each depth. Right: number of terms on each depth."}
 depth = dag_depth(dag)
 df$depth = depth[rownames(df)]
 par(mfrow = c(1, 2))
@@ -291,7 +291,7 @@ barplot(table(df$depth), xlab = "Depth", ylab = "Counts")
 ## Compare semantic similarities
 
 
-We randomly take 500 GO terms and calculate the semantic similarities among
+We randomly pick 500 GO terms and calculate the semantic similarities among
 them. For all the four tools, we use the "Lin 1998" method.
 
 ```{r}
@@ -364,13 +364,13 @@ pairs(df, pch = ".", col = "#00000040", xlim = c(0, 1), ylim = c(0, 1),
 The next plots show that **GOSemsim** over-estimates the similarity values more
 for the MICA terms with smaller depth (i.e. closer to the root).
 
-```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S1-6. Systematic shift of semantic similarity values from simona to GOSemSim. Left: over-estimatation on the similarity values with relation to the depth of MICA terms. Right: number of MICA terms on each depth. A depth of zero means the MICA term is the root term."}
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S1-6. Systematic shift of semantic similarity values from simona to GOSemSim. Left: over-estimation on the similarity values on each depth of MICA terms. Right: number of MICA terms on each depth. A depth of zero means the MICA term is the root term."}
 mica = MICA_term(dag, go_id)
 mica = mica[lower.tri(mica)]
 df$depth = depth[mica]
 par(mfrow = c(1, 2))
 boxplot(df$GOSemSim/df$simona ~ df$depth, xlab = "Depth of MICA", ylab = "sim_GOSemSim/sim_simona")
-barplot(table(df$depth), xlab = "MICA Depth", ylab = "Counts")
+barplot(table(df$depth), xlab = "Depth of MICA", ylab = "Counts")
 ```
 
 
@@ -410,7 +410,8 @@ The following plot shows **simona** and **ontologySimilarity** show far better
 performance than **GOSemSim** and **GOSim**. **simona** has the best
 performance among the four tools.
 
-```{r, fig.width = 6, fig.height = 6, fig.cap = "Figure S1-7. Runtime of simona, ontologySimilarity, GOSemSim and GOSim on calculating semantic similarities of the random 500 GO BP terms."}
+```{r, fig.width = 12, fig.height = 6, fig.cap = "Figure S1-7. Runtime of simona, ontologySimilarity, GOSemSim and GOSim on calculating semantic similarities of the random 500 GO BP terms. Left: compare all four tools. Right: only compare simona and ontologySimilarity."}
+par(mfrow = c(1, 2))
 plot(NULL, xlim = c(0, 9000), ylim = c(0, 350), 
 	xlab = "Number of terms", ylab = "runtime (sec)",
 	main = "Compare runtime of the four tools")
@@ -421,7 +422,60 @@ lines(k, t4, col = 7)
 
 legend("top", lty = 1, col = c(2, 3, 4, 7), 
 	legend = c("simona", "ontologySimilarity", "GOSemSim", "GOSim"))
+
+# the second plot
+plot(NULL, xlim = c(0, 9000), ylim = c(0, 30), 
+	xlab = "Number of terms", ylab = "runtime (sec)",
+	main = "Compare runtime")
+lines(k, t1, col = 2)
+lines(k, t2, col = 3)
+
+legend("top", lty = 1, col = c(2, 3), 
+	legend = c("simona", "ontologySimilarity"))
 ```
+
+We can also directly compare the fold improvement of runtime of **simona** to other tools. 
+In the following plot, when numbers of terms are small, **ontologySimilarity** has better
+runtime performance than **simona**, mainly because **simona** has extra computations before
+traversing the DAG to look for MICA terms, which becomes a major factor when the numbers of terms
+are small. But the performance of **simona** improves when the number of terms increases.
+
+```{r, fig.width = 12, fig.height = 4, fig.cap = "Figure S1-8. Runtime speed improvement of simone to other tools."}
+par(mfrow = c(1, 3))
+plot(k, t2/t1, xlab = "Number of terms", ylab = "ontologySimilarity / simona", main = "Runtime fold improvement")
+plot(k, t3/t1, xlab = "Number of terms", ylab = "GOSemSim / simona", main = "Runtime fold improvement")
+plot(k, t4/t1, xlab = "Number of terms", ylab = "GOSim / simona", main = "Runtime fold improvement")
+```
+
+To easy compare their time complexities, we scale numbers of random terms as well as
+the runtime both into the scale of `[0, 1]`. We also add the lines for linear, quadratic and cubic
+time complexities in the next plot.
+
+
+```{r, fig.width = 6, fig.height = 6, fig.cap = "Figure S1-9. Relative time complexity of simona, ontologySimilarity and GOSemSim."}
+rel_k = k/max(k)
+rel_t1 = t1/max(t1)
+rel_t2 = t2/max(t2)
+rel_t3 = t3/max(t3)
+
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+	xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled",
+	main = "Compare relative time complexity")
+lines(rel_k, rel_t1, col = 2)
+lines(rel_k, rel_t2, col = 3)
+lines(rel_k, rel_t3, col = 4)
+
+curve(x^1, lty = 1, add = TRUE)
+curve(x^2, lty = 2, add = TRUE)
+curve(x^3, lty = 3, add = TRUE)
+
+legend("topleft", lty = c(1, 1, 1, 1, 2, 3), col = c(2, 3, 4, 1, 1, 1), 
+	legend = c("simona", "ontologySimilarity", "GOSemSim", "O(n)", "O(n^2)", "O(n^3)"))
+```
+
+From the plot above, it is straightforward to see **simona** has a time complexity close
+to $O(n^2)$, while **ontologySimilarity** and **GOSemSim** have time
+complexity close to $O(n^3)$.
 
 ## Session info
 

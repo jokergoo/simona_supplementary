@@ -23,7 +23,7 @@ l = term1 != term2
 
 data = data.frame(x = 2, group = c("same", "different"), n = c(sum(!l), sum(l)))
 data$label = paste0(round(data$n/sum(data$n)*100, 1), "%")
-data$label[1] = paste0(data$label[1], "\nthe same")
+data$label[1] = paste0(data$label[1], "\n4-4same")
 data$label[2] = paste0(data$label[2], "\ndifferent")
 p1 = ggplot(data, aes(x = x, y = n, fill = group)) +
 	geom_col() +

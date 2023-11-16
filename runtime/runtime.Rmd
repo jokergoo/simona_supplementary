@@ -214,7 +214,7 @@ lines(x, predict(fit))
 
 ## Benchmark on OBO Foundry ontologies
 
-Similarly, we benchmark all OBO Foundry ontologies with numbers of terms larger
+We benchmark all OBO Foundry ontologies with numbers of terms larger
 than 1000. We set 50 different
 numbers of random terms to test, from 100 to `min(20000, dag_n_terms(dag))`. Here the
 result is already generated and saved in `"runtime_OBOFoundry_all.RData"`. The
@@ -231,19 +231,32 @@ and corresponding runtime.
 ```{r}
 load("runtime_OBOFoundry_all.RData")
 length(lt)
+```
+
+```{r, echo = FALSE}
+lt = lapply(lt, function(x) x[, 1:2])
+```
+
+```{r}
 head(names(lt))
 head(lt[[1]])
 head(df)
 ```
 
+In this section, we benchmark the runtime performance of **simona** from two 
+apsects: on the number of query terms, and on the size of ontologies.
+
+### On the number of query terms
+
 Different ontologies have different ranges of runtime. To make them comparable,
 we scale values on x-axis (i.e. numbers of terms) and values on y-axis
-(runtime) both into the range of `[0, 1]`.
+(runtime) both into the range of `[0, 1]`. In the next plot, we also add
+lines for the linear, quadratic and cubic time complexities.
 
 ```{r, fig.cap = "Figure S2-5. Compare runtime performance on various ontologies. Runtime performance is scaled into [0, 1] in the plot."}
 plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
     xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled",
-    main = "Compare runtime performance of OBOFoundry ontologies")
+    main = "Compare runtime performance of OBO Foundry ontologies")
 for(i in seq_along(lt)) {
     x = lt[[i]]$k
     y = lt[[i]]$t
@@ -259,9 +272,9 @@ legend("topleft", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
 
 In the plot, if a curve bends more to the bottom right of the plotting region,
 it means the time complexity is worse. The plot shows for most of the
-ontologies, **simona** has a non-linear time complexity for calculating the
-similarities, close to $O(n^2)$, but there are a few ontologies, on which
-**simona** shows a near-linear time complexity.
+ontologies, **simona** has a non-linear time complexity for calculating
+similarities of $n$ query terms, close to $O(n^2)$, but there are a few ontologies, on which
+**simona** shows a nearly-linear time complexity.
 
 Since the previous plot scales values on both x-axis and y-axis into `[0, 1]`,
 we can measure the difference to the linear time complexity by calculating the
@@ -308,21 +321,22 @@ plot(df$n_terms, df$rel_diff, log = "x",
     xlab = "Number of terms", 
     ylab = "Relative difference to linear time complexity")
 abline(h = 0, lty = 2, col = 2)
-abline(h = 1/6, lty = 2, col = 3)
-abline(h = 1/4, lty = 2, col = 4)
+abline(h = 1/6, lty = 2, col = 3) # area under quadratic curve is 1/3
+abline(h = 1/4, lty = 2, col = 4) # area under cubic curve is 1/4
 l = df$n_terms > 100000
 text(df$n_terms[l], df$rel_diff[l], df$id[l], 
     adj = c(1, -0.4), col = "blue", cex = 0.8)
 legend("topright", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
 ```
 
-However, this does not mean large ontology has better time complexity than
+However, this does not mean large ontologies have better time complexity than
 smaller ones. Since in the benchmark procedures, the possible maximal number
 of random terms to pick (let's call it `max_pick`) is set to 20000, with large
-ontologies with number of terms far larger than 20000, the number of picked
-terms is only a tiny proportion of total terms, thus the close-quadratic complexity
-is not obviously observable. Or when the number of terms picked is far smaller
-than the total number of terms, the time complexity is close to linear.
+ontologies whose numbers of terms far larger than 20000, the number of picked
+terms is only a tiny fraction of their total terms, thus the close-quadratic
+complexity is not obviously observable. Or in other words, when the number of
+terms to be picked is far smaller than the total number of terms in the ontology, 
+the time complexity is close to linear.
 
 We can validate it by setting `max_pick` to small values such as 5000 and 1000, shown in the following plots.
 When `max_pick` becomes smaller, such reduction to linear complexity can be observed in more ontologies.
@@ -395,14 +409,15 @@ text(df$n_terms[l], df$rel_diff[l], df$id[l],
 legend("topright", lty = 2, col = 2:4, legend = c("O(n)", "O(n^2)", "O(n^3)"))
 ```
 
+### On the size of ontologies 
+
 In the comparison we performed previously, we fix the ontology and check
 the runtime performance when increasing the number of terms used for calculating similarities.
 Next we do in another dimension. We fix the number of random terms and we check
 the runtime performance on the size of the ontology.
 
 We define the following `get_t_by_k()` function. For each ontology, the
-runtime $t$ of a given value of terms denoted as $k$ is predicted by a loess fit on number of terms
-and the corresponding runtime.
+runtime $t$ of a given number of terms denoted as $k$ is predicted by a loess fit.
 
 
 ```{r}
@@ -433,8 +448,9 @@ get_t_by_k = function(k) {
 }
 ```
 
-For example, if we randomly sample 500 terms from an ontology, the runtime performance
-on the size of the ontology would be:
+For example, we can estimate, if we randomly sample 500 terms for calculating
+similarities, the different runtime performance on ontologies with different
+sizes:
 
 ```{r, fig.cap = "Figure S2-8. Runtime preformance on the size of ontologies. The number of terms for calculating semantic similarities is fixed to 500."}
 t500 = get_t_by_k(500)
@@ -457,13 +473,14 @@ fit = lm(log(t500) ~ log(df$n_terms))
 coef = round(coef(fit), 2)
 ```
 
-Let's denote the runtime as $t$ and the size of the ontology as $n$, then they have a
-linear relation: $\log(t) = `r coef[2]`\log(n) - `r -coef[1]`$. The slope is
+Let's denote the runtime as $t$ and the size of the ontology as $N$, then they have a
+linear relation: $\log(t) = `r coef[2]`*\log(N) - `r -coef[1]`$. The slope is
 less than one, which means, if the ontology size increases by 2x, the runtime
-only increases by $2^{`r coef[2]`}$ (`r round(2^coef[2], 2)`) times.
+only increases by $2^{`r coef[2]`}$ (`r round(2^coef[2], 2)`) times, thus the time complexity
+at $k = 500$ is $O(N^{0.77})$.
 
 
-We can measure the relation between runtime and ontology size for a list of different
+We can measure the relation between runtime $t$ and ontology size $N$ for a list of different
 $k$. The next function `compare_runtime_by_k()` calculates the runtime, makes the plot and 
 performs linear regression for a given $k$. It returns the slope from the linear regression model.
 
@@ -472,13 +489,13 @@ library(GetoptLong)
 compare_runtime_by_k = function(k) {
     tt = get_t_by_k(k)
     plot(df$n_terms, tt, log = "xy",
-        xlab = "n / Size of the ontology", ylab = "t / Runtime (sec)", 
+        xlab = "N / Size of the ontology", ylab = "t / Runtime (sec)", 
         main = qq("Randomly sample @{k} terms from each ontology"))
     fit = lm(log(tt) ~ log(df$n_terms))
     coef = round(coef(fit), 2)
     coef[1] = ifelse(sign(coef[1]) == 1, paste0("+", coef[1]), coef[1])
     text(min(df$n_terms), max(tt, na.rm = TRUE), 
-        qq("log(t) = @{coef[2]}*log(n)@{coef[1]}"), adj = c(0, 1))
+        qq("log(t) = @{coef[2]}*log(N)@{coef[1]}"), adj = c(0, 1))
     coef(fit)[2]
 }
 ```
@@ -501,11 +518,11 @@ when increasing the size of the ontology. We can check how fast the runtime incr
 sample different numbers of terms.
 
 ```{r, fig.cap = "Figure S2-10. The increasing rate of runtime when increase the ontology size at different k."}
-plot(k, coef, xlab = "Numbers of random terms", ylab = "coef")
+plot(k, coef, xlab = "Numbers of random terms", ylab = "coef",
+    main = "Runtime complexity on different k")
 ```
 
-It shows if randomly sample more terms from the ontology, the runtime increases slower and slower than
-the ontology size. 
+It shows when the number of query terms increases, the time complexity becomes stably around $O(N^{0.5})$.
 
 ## Algorithm
 
@@ -528,7 +545,7 @@ First we describe the data structures:
    affects everywhere `l_*` variables are used.
 
 
-We describe the algorithm for looking for LCA terms. The algorithm contains two steps:
+As an example, we describe the algorithm for looking for LCA terms. The algorithm contains two steps:
 
 **Input**: a vector of terms, already converted to integer indices.
 **Output**: A matrix of depth of LCA terms.
@@ -651,10 +668,139 @@ for(an in all_ancestors) {
 
 In this three levels of for-loop, in the triple (`ca`, `offspring[i]`,
 `offspring[j]`), `an` is always an common ancestor of `offspring[i]`,
-`offspring[j]`, while in other implementations, computations are also spent on
-the case where `an `is not the common ancestor.
+`offspring[j]`.
 
-The algorithm is also workable for finding MICA or calculating pairwise distance in the ontology.
+
+We can give an approximate estimation on the time complexity of the algorithm.
+Let's denote set $A$ as the set of query terms and $C$ and the set of
+union of all ancestors of terms in $A$. Let's denote $a_1$ and $a_2$ are the two terms in $A$,
+and $c$ is a common ancestor term of $a_1$ and $a_2$.
+The process involes looking for the triple $(c, a_1, a_2)$. In the algorithm
+we proposed, the relations in the triple are always visited once, while
+in some other tools, some relations are duplicated visited.
+
+Let's denote the number of ancestors are $N_\mathrm{an}$ and the number of query terms are $n$,
+then the approximate time complexity is $O(N_\mathrm{an}*n^2)$.
+
+Since ancestors can be shared, $N_\mathrm{an} < n*d$ where $d$ is the average
+depth of $n$ query terms. When $n$ is relatively larger, or there are more ancestors that are shared, 
+$N_\mathrm{an} \ll n*d$, in this way,
+the time complexity is between $O(n^2)$ and $O(n^3)$ and more closer to $O(n^2)$.
+
+
+```{r, echo = FALSE}
+lt = list(structure(list(k = c(100, 181, 263, 344, 426, 507, 589,
+670, 752, 833, 915, 996, 1078, 1159, 1241, 1322, 1404, 1486,
+1567, 1649, 1730, 1812, 1893, 1975, 2056, 2138, 2219, 2301, 2382,
+2464, 2545, 2627, 2708, 2790, 2872, 2953, 3035, 3116, 3198, 3279,
+3361, 3442, 3524, 3605, 3687, 3768, 3850, 3931, 4013, 4095),
+    t = c(0.0199999999999818, 0.0319999999999254, 0.0440000000000964,
+    0.0570000000000164, 0.0579999999999927, 0.0609999999999218,
+    0.0679999999999836, 0.0819999999998799, 0.0979999999999563,
+    0.0970000000002074, 0.132000000000062, 0.166999999999916,
+    0.269000000000005, 0.288999999999987, 0.233999999999924,
+    0.223999999999933, 0.271999999999935, 0.404999999999973,
+    0.430000000000064, 0.460000000000036, 0.492999999999938,
+    0.526000000000067, 0.569999999999936, 0.598999999999933,
+    0.628999999999905, 0.676000000000158, 0.713999999999942,
+    0.824000000000069, 0.865000000000009, 0.826000000000022,
+    0.921999999999798, 0.951000000000022, 1.02600000000007, 1.06400000000008,
+    1.10899999999992, 1.25, 1.1690000000001, 1.21100000000001,
+    1.33699999999999, 1.35599999999999, 1.47799999999984, 1.63799999999992,
+    1.60899999999992, 1.64900000000011, 1.71900000000005, 1.81700000000001,
+    1.87199999999984, 1.93399999999997, 2.05100000000016, 2.21499999999992
+    )), class = "data.frame", row.names = c(NA, -50L)), structure(list(
+    k = c(200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000,
+    2200, 2400, 2600, 2800, 3000, 3200, 3400, 3600, 3800), t = c(0.285000000000082,
+    0.450000000000045, 0.605999999999995, 0.657999999999902,
+    0.891999999999825, 1.08900000000017, 1.33600000000001, 1.7360000000001,
+    2.154, 2.77999999999997, 3.97400000000016, 4.74900000000002,
+    5.94499999999994, 6.19700000000012, 6.25800000000004, 7.60000000000014,
+    8.56899999999996, 9.19999999999982, 10.4279999999999)), class = "data.frame", row.names = c(NA,
+-19L)))
+```
+
+We can validated it with two DAGs. The first one `binary_tree` is a tree where each term has two children
+and all leaf terms have the same depth of 11.
+
+```{r, eval = FALSE}
+lt = list()
+binary_tree = dag_random(n_children = 2, tree = TRUE, depth = 11)
+lt[[1]] = benchmark_runtime(binary_tree)
+```
+
+In the second DAG, each term has the number of children ranging between 3 to 10. On each term,
+there is a probability of 0.8 that it connects to other terms lower in the DAG, with the number of 
+terms to be connected ranging between 1 and 15. The maximal number of terms in the DAG is set to 4000.
+
+```{r, eval = FALSE}
+set.seed(37)
+random_dag = dag_random(n_children = c(3, 10), max = 4000, p = 0.8, power = -1, np = c(1, 15))
+lt[[2]] = benchmark_runtime(random_dag)
+```
+
+```{r, echo = FALSE}
+binary_tree = dag_random(n_children = 2, tree = TRUE, depth = 11)
+set.seed(37)
+random_dag = dag_random(n_children = c(3, 10), max = 4000, p = 0.8, power = -1, np = c(1, 15))
+```
+
+```{r}
+binary_tree
+random_dag
+```
+
+In `binary_tree`, average number of parents is 1 (exclude the root), and in `random_dag`, the average
+number of parents is higher, more DAG is more densely connected in `random_dag`:
+
+```{r}
+mean(n_parents(random_dag))
+```
+
+Let's visualize these two DAGs:
+
+```{r, fig.width = 12, fig.height = 5, fig.cap = "Figure S2-11. Visualization of the binary tree and a random dense DAG."}
+library(grid)
+pushViewport(viewport(x = 0.25, width = 0.5))
+dag_circular_viz(binary_tree, newpage = FALSE)
+popViewport()
+
+pushViewport(viewport(x = 0.75, width = 0.5))
+dag_circular_viz(random_dag, edge_transparency = 0.96, newpage = FALSE)
+popViewport()
+```
+
+And we compare the runtime performance on the two DAGs with different forms.
+
+```{r, fig.width = 12, fig.height = 6, fig.cap = "Figure S2-12. Runtime performance on the binary tree and the random dense DAG. Left: absolute time complexity. Right: relative time complexity."}
+par(mfrow = c(1, 2))
+plot(NULL, xlim = c(0, 4100), ylim = c(0, 11),
+    xlab = "Numbers of random terms", ylab = "runtime (sec)")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    lines(x, y, col = i + 1)
+}
+legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+    xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    x = x/max(x)
+    y = y/max(y)
+    lines(x, y, col = i + 1)
+}
+curve(x^1, from = 0, to = 1, lty = 2, add = TRUE)
+curve(x^2, from = 0, to = 1, lty = 2, add = TRUE)
+curve(x^3, from = 0, to = 1, lty = 2, add = TRUE)
+legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+```
+
+Last, inside the second `if` block in the pseudo code, the code can be generalized, such as for finding
+MICA or calculating pairwise distance in the ontology, thus this agorithm is a general algorithm for
+dealing with relations of term pairs on the DAG.
 
 ## Session info
 
