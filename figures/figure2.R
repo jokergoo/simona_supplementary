@@ -1,150 +1,153 @@
 
+
+
 source("lib.R")
 
 library(ggplot2)
-library(RColorBrewer)
-library(GetoptLong)
-
-###
-load("../runtime/runtime_OBOFoundry_all.RData")
-
-for(nm in names(lt)) {
-    x = lt[[nm]]$k
-    y = lt[[nm]]$t
-    x = x/max(x)
-    y = y/max(y)
-
-    lt[[nm]]$x = x
-    lt[[nm]]$y = y
-    lt[[nm]]$ontology = nm
-}
-df2 = do.call(rbind, lt)
 
 
-lines = rbind(data.frame(x = seq(0, 1, length = 2), y = seq(0, 1, length = 2), complexity = "O(n)"),
-              data.frame(x = seq(0, 1, length = 100), y = seq(0, 1, length = 100)^2, complexity = "O(n^2)"),
-              data.frame(x = seq(0, 1, length = 100), y = seq(0, 1, length = 100)^3, complexity = "O(n^3)"))
-p1 = ggplot(df2, aes(x, y)) +
-    geom_line(aes(group = ontology), alpha = 0.25, show.legend = FALSE) +
-    geom_line(data = lines, mapping = aes(x = x, y = y, col = complexity), lty = 2) +
-    labs(x = "Numbers of terms, scaled", y = "runtime, scaled") +
-    ggtitle("Compare runtime performance of OBOFoundry ontologies") +
-    theme(legend.position = c(0.85, 0.16))
+library(simona)
+dag = simona::create_ontology_DAG_from_GO_db(namespace = "BP", org_db = "org.Hs.eg.db", 
+	relations = c("part_of", "regulates"))
+ic1 = simona::term_IC(dag, method = "IC_annotation")
+
+go_id1 = names(ic1[!is.na(ic1)])
 
 
-rel_diff = function(x, y) {
-    if(missing(y)) {
-        y = x[[2]]
-        x = x[[1]]
-    }
+library(ontologyIndex)
+onto = ontologyIndex::get_ontology("../compare_tools/go-basic.obo", 
+	propagate_relationships = c("is_a", "part_of", "regulates", "negatively_regulates", "positively_regulates"))
 
-    x = x/max(x); x = c(0, x)
-    y = y/max(y); y = c(0, y)
+library(org.Hs.eg.db)
+tb = toTable(org.Hs.egGO)
+tb = tb[tb$Ontology == "BP", ]
+# this ensures each GO term has genes annotated
+lt = split(tb$go_id, tb$gene_id)
 
-    fit = loess(y ~ x, span = 0.5)
-
-    x2 = seq(0, 1, length = 1000)
-    y2 = predict(fit, x2)
-
-    area = sum(1/1000 * y2)
-
-    0.5 - area
-}
+ic2 = ontologyIndex::get_term_info_content(onto, lt)
+go_id2 = names(ic2)
 
 
-df$rel_diff = sapply(lt, rel_diff)
-
-library(ggrepel)
-
-p2 = ggplot(df, aes(x = n_terms, y = rel_diff)) +
-    geom_point() +
-    scale_x_log10(breaks = c(1e3, 1e4, 1e5, 1e6), labels = c("1K", "10K", "100K", "1M")) +
-    geom_hline(data = data.frame(yintercept = c(0, 1/6, 1/4), complexity = c("O(n)", "O(n^2)", "O(n^3)")), 
-        mapping = aes(yintercept = yintercept, col = complexity), lty = 2) +
-    lims(y = c(-0.3, 0.3)) +
-    labs(x = "Numbers of terms", y = "Relative difference to linear time complexity") +
-    ggtitle("Compare time complexity on OBOFoundry ontologies") +
-    geom_text_repel(data = df[df$n_terms > 100000 & df$rel_diff < 0.1, ], 
-        mapping = aes(x = n_terms, y = rel_diff, label = id), col = 1) +
-    theme(legend.position = c(0.13, 0.16))
+library(GOSemSim)
+data = GOSemSim::godata("org.Hs.eg.db", ont = "BP")
+ic3 = data@IC[is.finite(data@IC)]
+go_id3 = names(ic3)
 
 
-get_t_by_k = function(k) {
-    sapply(lt, function(df) {
-        i0 = which(df$k == k)
-        if(length(i0)) {
-            df$t[i0]
-        } else {
-            ind1 = which(df$k < k)
-            if(length(ind1) == 0) { # k is smaller than all df$k
-                return(NA)
-            }
-            i1 = max(ind1)
-            ind2 = which(df$k > k)
-            if(length(ind2) == 0) { # k is larger than all df$k
-                return(NA)
-            }
-            i2 = min(ind2)
 
-            x = c(0, df$k)
-            y = c(0, df$t)
-            fit = loess(y ~ x, span = 0.5)
-            predict(fit, k)
-         
-        }
-    })
-}
-
-df$t500 = get_t_by_k(500)
-
-p3 = ggplot(df, aes(x = n_terms, y = t500, col = avg_parents)) +
-    geom_point() +
-    scale_colour_gradientn(colours = rev(brewer.pal(11, "Spectral")))+
-    scale_x_log10() + scale_y_log10() +
-    labs(x = "Size of the ontology / n", y = "Runtime (sec) / t") +
-    ggtitle("Randomly sample 500 terms from each ontology") +
-    theme(legend.position = c(0.85, 0.22))
-
-n = nrow(df)
-fit = lm(log(df$t500) ~ log(df$n_terms))
-su = summary(fit)
-coef = coef(fit)
-f = function(x) {
-    exp(log(x)*coef[2] + coef[1])
-}
-p3 = p3 + geom_line(data = data.frame(x = range(df$n_terms), y = f(range(df$n_terms))), mapping = aes(x = x, y= y), col = "black")
-coef = round(coef, 2)
-p3 = p3 + annotate(geom = "text", x = 5e3, y = 44, label = qq("log(t) = @{coef[2]}*log(n) - @{-coef[1]}"))
-
-compare_runtime_by_k = function(k) {
-    tt = get_t_by_k(k)
-    n = length(tt)
-    fit = lm(log(tt) ~ log(df$n_terms))
-    su = summary(fit)
-    p = pf(su$fstatistic[1], su$fstatisti[2], su$fstatisti[3], lower.tail = FALSE)
-    print(p)
-    coef(fit)[2]
-}
-
-k = c(500, 600, 700, 800, 900, 1000, 2000, 3000, 
-      4000, 5000, 6000, 7000, 8000, 9000, 10000)
-coef = sapply(k, compare_runtime_by_k)
+library(GOSim)
+GOSim::setOntology("BP")
+GOSim::calcICs()
+load("ICsBPhumanall.rda") # it loads the object `IC`
+ic4 = IC[is.finite(IC)]
+go_id4 = names(ic4)
 
 
-p4 = ggplot(data.frame(k = k, coef = coef), aes(x = k, y = coef)) +
-    geom_point() +
-    labs(x = "Numbers of random terms to fix", y = "Slope coef") +
-    ggtitle("Linear regressions of runtime on the ontolgy size")
+
+go_id_common = intersect(intersect(go_id1, go_id2), intersect(go_id3, go_id4))
+df = data.frame(
+	simona        = ic1[go_id_common],
+	ontologyIndex = ic2[go_id_common],
+	GOSemSim      = ic3[go_id_common],
+	GOSim         = ic4[go_id_common]
+)
+
+
+p1 = ggplot(df, aes(x = simona, y = ontologyIndex)) +
+	geom_point(size = 1) +
+	ggtitle("A) Compare ICs between simona / ontologyIndex")
+p2 = ggplot(df, aes(x = simona, y = GOSemSim)) +
+	geom_point(size = 1) + geom_abline(slope= 1, intercept=0, col = 2, lty = 2) +
+	scale_x_continuous(limits = c(0, 12.5), breaks = seq(0, 12, by = 4)) +
+	scale_y_continuous(limits = c(0, 12.5), breaks = seq(0, 12, by = 4)) +
+	ggtitle("B) Compare ICs between simona / GOSemSim")
+p3 = ggplot(df, aes(x = GOSim, y = GOSemSim)) +
+	geom_point(size = 1) +
+	scale_x_continuous(limits = c(0, 12.5), breaks = seq(0, 12, by = 4)) +
+	scale_y_continuous(limits = c(0, 12.5), breaks = seq(0, 12, by = 4)) +
+	ggtitle("C) Compare ICs between GOSim / GOSemSim")
+
+#########################
+
+library(ComplexHeatmap)
+
+load("../compare_tools/compare_sim_mat.RData")
+
+library(circlize)
+# set the same color mapping to the four heatmaps
+col_fun = colorRamp2(c(0, 0.3, 0.6), c("blue", "white", "red"))
+
+od = hclust(dist(m1))$order
+
+
+p4 = grid.grabExpr(
+	draw(Heatmap(m1, name = "similarity", col = col_fun,
+		show_row_names = FALSE, show_column_names = FALSE,
+		row_order = od, column_order = od, show_heatmap_legend = FALSE, 
+		use_raster = TRUE, raster_quality = 2,
+		column_title = "D) Similaritysimona, random 500 GO terms")
+	), width = 4, height = 4
+)
+p5 = grid.grabExpr(
+	draw(Heatmap(m2, name = "similarity2", col = col_fun,
+		show_row_names = FALSE, show_column_names = FALSE,
+		row_order = od, column_order = od, show_heatmap_legend = FALSE, 
+		use_raster = TRUE,raster_quality = 2,
+		column_title = "E) ontologySimilarity, random 500 GO terms")
+	), width = 4, height = 4
+)
+p6 = grid.grabExpr(
+	draw(Heatmap(m3, name = "similarity3", col = col_fun, 
+		show_row_names = FALSE, show_column_names = FALSE,
+		row_order = od, column_order = od, show_heatmap_legend = FALSE, 
+		use_raster = TRUE,raster_quality = 2,
+		column_title = "F) GOSemSim, random 500 GO terms")
+	), width = 4, height = 4
+)
+p7 = grid.grabExpr(
+	draw(Heatmap(m4, name = "Similarity", col = col_fun, 
+		show_row_names = FALSE, show_column_names = FALSE, 
+		row_order = od, column_order = od,
+		use_raster = TRUE, raster_quality = 2,
+		column_title = "G) GOSim, random 500 GO terms")
+	), width = 4, height = 4
+)
+
+####
+
+load("../compare_tools/compare_tools.RData")
+
+df1 = rbind(data.frame(k = k, runtime = t1, tool = "simona"),
+	       data.frame(k = k, runtime = t2, tool = "ontologySimilarity"),
+	       data.frame(k = k, runtime = t3, tool = "GOSemSim"), 
+	       data.frame(k = k, runtime = t4, tool = "GOSim"))
+df1$tool = factor(df1$tool, levels = c("simona", "ontologySimilarity", "GOSemSim", "GOSim"))
+df1 = df1[!is.na(df1$runtime), ]
+
+
+p8 = ggplot(df1, aes(x = k, y = runtime, col = tool)) +
+	geom_line()	+ 
+	labs(x = "Numbers of terms", y = "Runtime (sec)", col = "Tool") +
+	ggtitle("H) Compare runtime performance")
+
+p9 = grob()
 
 
 library(cowplot)
 
-pdf("figure2.pdf", width = 10, height = 10)
+pdf("figure2.pdf", width = 13, height = 13)
 print(plot_grid(
-    p1, 
-    p2, 
-    wrap_plot(p3, margin_bottom = unit(5, "mm")), 
-    wrap_plot(p4, margin_bottom = unit(5, "mm")), 
-    nrow = 2
-))
+	plot_grid(p1, p2, p3, nrow = 1),
+	plot_grid(
+		wrap_plot(p4, margin_left = unit(20, "pt")), 
+		wrap_plot(p5, margin_left = unit(20, "pt")), 
+		wrap_plot(p6, margin_left = unit(20, "pt")), 
+		nrow = 1),
+	plot_grid(
+		wrap_plot(p7, margin_left = unit(20, "pt"), margin_right = unit(-50, "pt")), 
+		wrap_plot(p8, margin_left = unit(60, "pt"), margin_right = unit(-170, "pt"), margin_bottom = unit(-20, "pt")), 
+		p9, nrow = 1),
+	p9,
+	nrow = 4, rel_heights = c(1, 1, 1, 0.05)))
 dev.off()
+

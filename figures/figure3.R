@@ -37,7 +37,7 @@ p1 = grid.grabExpr(
         row_names_gp = gpar(fontsize = 9), column_names_gp = gpar(fontsize = 9),
         show_row_dend = FALSE, show_column_dend = FALSE,
         row_dend_reorder = TRUE, column_dend_reorder = TRUE,
-        column_title = "IC correlation, GO BP"))
+        column_title = "A) IC correlation, GO BP"))
 )
 
 
@@ -55,7 +55,7 @@ p2 = ggplot(loc, aes(x, y, label = method, col = factor(group))) +
     geom_point() + 
     geom_text_repel(show.legend = FALSE, size = 3) +
     labs(x = "Dimension 1", y = "Dimension 2", col = "Group") +
-    ggtitle("MDS based on IC correlations")
+    ggtitle("B) MDS based on IC correlations")
 
 
 #### sim
@@ -121,7 +121,7 @@ p3 = grid.grabExpr(
         row_names_gp = gpar(fontsize = 9), column_names_gp = gpar(fontsize = 9),
         show_row_dend = FALSE, show_column_dend = FALSE,
         row_dend_reorder = TRUE, column_dend_reorder = TRUE,
-        column_title = "Semantic similarity correlation, GO BP"))
+        column_title = "C) Semantic similarity correlation, GO BP"))
 )
 
 
@@ -136,11 +136,11 @@ p4 = ggplot(loc, aes(x, y, label = method, col = factor(group))) +
     geom_point() + 
     geom_text_repel(show.legend = FALSE, size = 3) +
     labs(x = "Dimension 1", y = "Dimension 2", col = "Group") +
-    ggtitle("MDS based on similarity correlations")
+    ggtitle("D) MDS based on similarity correlations")
 
 p4 = grid.grabExpr(
     print(p4), width = 6, height = 5.5
-    )
+)
 
 library(cowplot)
 

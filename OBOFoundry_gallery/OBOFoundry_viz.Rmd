@@ -66,7 +66,7 @@ df = readRDS("OBOFoundry_summary.rds")
 df = df[df$n_terms > 0, ]
 id = df$id
 df$id = qq("<a href='http://obofoundry.org/ontology/@{df$id}.html' target=_blank>@{df$id}</a>", collapse = FALSE)
-df$title = qq("@{df$title} <span class='show_image' onclick='show_image(\"@{id}\")'>[image]</span>", collapse = FALSE)
+df$title = qq("@{df$title} <span class='show_image' onclick='show_image(\"@{id}\", \"@{df$basename}\")'>[image]</span>", collapse = FALSE)
 df$avg_parents = round(df$avg_parents, 1)
 df$avg_children = round(df$avg_children, 1)
 df$is_tree = ifelse(df$n_terms == df$n_relations + 1, "tree", "")
@@ -93,7 +93,7 @@ datatable(df, escape = FALSE, rownames = FALSE,
 </style>
 
 <div id="image">
-<h3>Plots for ontology: ado</h3>
+<h3>Plots for ontology: <a href='http://obofoundry.org/ontology/ado.html' target="_blank">ado</a> &lt;ado.owl&gt;</h3>
 <ul>
 <li><a id="circular_click">Circular visualization</a></li>
 <li><a id="heatmap_click" style="color:grey">Similarity heatmap</a></li>
@@ -116,17 +116,40 @@ ComplexHeatmap::Heatmap(sim, name = "Sim_WP_1994",
 </div>
 <div id="runtime" style="display:none;">
 <p>The runtime is tested by different numbers of terms randomly picked from the ontology.</p>
+<pre>benchmark_runtime = function(dag) {
+    invisible(dag_depth(dag))  # depth will be cached
+
+    n_terms = dag_n_terms(dag)
+    k = seq(100, min(20000, n_terms), length = 50)
+    k = floor(k)
+    t = rep(NA_real_, length(k))
+    n_an = rep(0, length(k))
+    for(i in seq_along(k)) {
+        terms = sample(n_terms, k[i])
+        t[i] = system.time(LCA_term(dag, terms))[3]
+    }
+    data.frame(k = k, t = t)
+}
+df = benchmark_runtime(dag)
+plot(df$k, df$t, xlab = "Number of random terms", ylab = "Runtime (sec)", 
+    main = "Runtime for LCA_term()")
+x = c(0, df$k)
+y = c(0, df$t)
+fit = loess(y ~ x, span = 0.5)
+lines(x, predict(fit))
+legend("topleft", lty = 1, legend = "loess fit")
+</pre>
 <img id="image3" src="image/OBOFoundry_ado_runtime.png" />
 </div>
 </div>
 
 
 <script>
-function show_image(id) {
+function show_image(id, basename) {
     $("#image1").attr("src", "image/OBOFoundry_" + id + ".png");
     $("#image2").attr("src", "image/OBOFoundry_" + id + "_heatmap.png");
     $("#image3").attr("src", "image/OBOFoundry_" + id + "_runtime.png");
-    $("#image h3").text("Plots for ontology: " + id);
+    $("#image h3").html("Plots for ontology: <a href='http://obofoundry.org/ontology/" + id + ".html' target='_blank'>" + id + "</a> &lt;" + basename + "&gt;");
     document.getElementById("image").scrollIntoView();
 }
 

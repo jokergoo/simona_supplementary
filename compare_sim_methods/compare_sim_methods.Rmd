@@ -85,7 +85,7 @@ measurement, we directly generate the hierarchical clustering based on `1 -
 cor`.
 
 
-```{r, fig.width = 9, fig.height = 8, fig.cap = "Figure S4-1. Correlation heatmap of semantic similarities of 500 random GO BP terms by various similarity methods."}
+```{r, fig.width = 9, fig.height = 8, fig.cap = "Figure S4.1. Correlation heatmap of semantic similarities of 500 random GO BP terms by various similarity methods."}
 cor = cor(df, use = "pairwise.complete.obs")
 hc = hclust(as.dist(1 - cor))
 library(ComplexHeatmap)
@@ -98,7 +98,7 @@ Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
 We next remove the following similarity methods which show very different patterns
 to other methods, and remake the heatmap.
 
-```{r, fig.width = 8, fig.height = 8, fig.cap = "Figure S4-2. Correlation heatmap of semantic similarities after removing seven methods that generate very different patterns from other methods. Please note the color scale is differennt from Figure S4-1."}
+```{r, fig.width = 8, fig.height = 8, fig.cap = "Figure S4.2. Correlation heatmap of semantic similarities after removing seven methods that generate very different patterns from other methods. Please note the color scale is differennt from Figure S4-1."}
 ind = which(colnames(df) %in% c("Sim_Jiang_1997", "Sim_HRSS_2013", "Sim_universal",
     "Sim_Dice", "Sim_Kappa", "Sim_Jaccard", "Sim_Overlap"))
 cor2 = cor[-ind, -ind]
@@ -147,7 +147,7 @@ Next we perform MDS (multidimension scaling) analysis on the `1-cor` distance ma
 visualize the first two dimensions. 
 
 
-```{r, fig.width = 7, fig.height = 6, fig.cap = "Figure S4-3. MDS plot of various similarity methods."}
+```{r, fig.width = 7, fig.height = 6, fig.cap = "Figure S4.3. MDS plot of various similarity methods."}
 library(ggrepel)
 library(ggplot2)
 loc = cmdscale(as.dist(1-cor2))
@@ -166,7 +166,8 @@ ggplot(loc, aes(x, y, label = method, col = factor(group))) +
 
 
 
-```{r, echo = FALSE, eval = FALSE}
+```{r, echo = FALSE, eval = !file.exists("image")}
+dir.create("image", showWarnings = FALSE)
 od = hclust(dist(lt[["Sim_Lin_1998"]]))$order
 for(nm in names(lt)) {
     png(paste0("image/go_bp_random_500_sim_", nm, ".png"), width = 700*1.5, height = 700*1.5, res = 72*1.5)
@@ -196,7 +197,7 @@ The methods in the five groups are summarized as follows:
 - Group 4: methods that aggregate from all common ancestor terms.
 - Group 5: methods that based on the distance of two terms in the DAG.
 
-```{r, eval = FALSE, echo = FALSE}
+```{r, eval = !file.exists("image/scatterplot_group_1_foo.png"), echo = FALSE}
 LCA_depth = LCA_depth(dag, go_id)
 LCA_depth = LCA_depth[lower.tri(LCA_depth)]
 
@@ -241,7 +242,7 @@ for(i in 1:5) {
 </ul>
 <div class="figure" style="text-align:center">
 <img id="scatterplot_image" src="image/scatterplot_group_1.png" />
-<p class="caption">Figure S4-4. Pairwise comparison between various similarity methods on 500 random GO BP terms. The five groups are defined in Figure S4-2.</p>
+<p class="caption">Figure S4.4. Pairwise comparison between various similarity methods on 500 random GO BP terms. The five groups are defined in Figure S4.2.</p>
 </div>
 </div>
 
@@ -319,7 +320,7 @@ Finally, you can select an individual heatmap of similarities calculated by: <se
 
 <div id="image" class="figure">
 <img src="image/go_bp_random_500_sim_Sim_Lin_1998.png" width="700" />
-<p class="caption">Figure S4-5. Similarity heatmap of the 500 random GO BP terms under different similarity methods.</p>
+<p class="caption">Figure S4.5. Similarity heatmap of the 500 random GO BP terms under different similarity methods.</p>
 </div>
 
 

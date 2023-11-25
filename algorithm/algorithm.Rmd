@@ -1,0 +1,282 @@
+---
+title: "Supplementary File 2: The Algorithm"
+author: "Zuguang Gu ( z.gu@dkfz.de )"
+date: '`r Sys.Date()`'
+output: 
+  html_document:
+    css: main.css
+    toc: true
+    fig_caption: true
+---
+
+```{r, echo = FALSE, message = FALSE}
+library(knitr)
+knitr::opts_chunk$set(
+    error = FALSE,
+    tidy  = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.width = 6, fig.height = 6,
+    fig.align = "center"
+)
+```
+
+## The algorithm
+
+The key step in semantic similarity analysis is to look for the tuple of three
+items $(a, x_1, x_2)$ where $a$ is a common ancestor of the two terms $x_1$
+and $x_2$. **simona** implements a "top-bottom" algorithm to traverse the DAG to
+obtain such tuples where $a$ is always a common ancestor of $x_1$ and $x_2$.
+
+<br>
+
+```{r, echo = FALSE, fig.cap = "Figure S2.1. Algorithm for looking for LCA terms implemented in simona."}
+knitr::include_graphics("f2.png")
+```
+
+We use a simplified DAG in Figure S2.1 as an example to explain the algorithm used in
+**simona**. In this example, we want to calculate depths of LCA (the lowest
+common ancestors) terms of four query terms of $x_1$, $x_2$, $x_3$ and $x_4$.
+The results is saved in a symmetric matrix denoted as $M$.
+The algorithm includes two steps:
+
+1. Find all the ancestors of $x_1$, $x_2$, $x_3$ and $x_4$, also including the
+   four query terms. This can be done by the breadth-first search (BFS) or
+   depth-first search (DFS). We denote this set of terms as $A$. In Figure
+   S2.1A, $A$ includes terms in blue and red.
+2. For every term $a$ in $A$, there are two sub-steps:
+   
+   1. Look for the subset of query terms that are offsprings of $a$. This can
+      be done by BFS or DFS. Let's denote this subset of query terms as $D$.
+   2. Then for every pair of terms in $D$, $a$ is always their common
+      ancestor. Thus, we only need to update values in the sub-matrix of $M$
+      that corresponds to terms in $D$, by comparing the depth of $a$.
+   
+   Figure S2.1 B-F as well as matrices in the bottom right in Figure S2.1
+   illustrate this process. Note in the figures, we start from term $a_1$
+   which is the root in $A$, but the order of B-F does not matter and it can be randomly permutated.
+
+
+The advantage of this algorithm is, when traversing from each ancestor to
+query terms, we can always ensure in the tuple $(a, x_i, x_j)$, $a$ is a
+common ancestor of $x_i$ and $x_j$.
+
+
+Although there are more effcient methods to look for LCA for a specific pair
+of terms, current tools, e.g. **GOSemSim** and **ontologySimilarity**, use the
+similar implementations, which is a "bottom-up" method, going through every
+pair of query terms. The algorithm can be summarized in the following four steps:
+
+1. For query term $x_1$, get the set of its ancestors, denoted as $A_1$.
+2. For query term $x_2$, get the set of its ancestors, denoted as $A_2$.
+3. Get the intersection set from $A_1$ and $A_2$, denoted as $A_\mathrm{intersect}$.
+4. Obtain the LCA term from $A_\mathrm{intersect}$.
+
+
+This algorithm is not effcient, because many of the ancestor-offspring
+relations of $(a, x)$ are either repeatedly visited, or unnecessarily visited.
+
+Let's take the DAG in Figure S2.2 as an example to illustrate the difference
+between the two algorithms. In Figure S2.2, the DAG has a strict tree
+structure of 7 terms, and we want to find the LCA terms of $x_1$, $x_2$, $x_3$
+and $x_4$.
+
+```{r, echo = FALSE, out.width = "30%", fig.cap = "Figure S2.2. A tiny DAG example."}
+knitr::include_graphics("f1.png")
+```
+
+Let's count how many times term $a_2$ is visited by the two algorithms.
+
+**The "bottom-up" methods used in existing tools**: 
+The steps where $a_2$ is visited and how it is visited are listed as follows:
+
+```
+# the pair of x1 and x4
+x1 -> a2  # obtain x1's ancestors
+a2 -> a1  # obtain x1's ancestors
+a2 -> a1  # compare a2 to x4's ancestors. Here a1 is also an ancestor of x4
+a2 -> a3  # compare a2 to x4's ancestors
+a2 -> x4  # compare a2 to x4's ancestors
+
+# the pair of x1 and x2
+# since x1's ancestore are already obtained, we do not need to do it again
+a2 -> a1  # compare a2 to x2's ancestors
+a2 -> a2  # compare a2 to x2's ancestors
+a2 -> x2  # compare a2 to x2's ancestors
+
+# the pair of x1 and x3
+# since x1's ancestore are already obtained, we do not need to do it again
+a2 -> a1  # compare a2 to x3's ancestors
+a2 -> a3  # compare a2 to x3's ancestors
+a2 -> x3  # compare a2 to x3's ancestors
+
+# the pair of x2 and x3
+x2 -> a2  # obtain x2's ancestors
+a2 -> a1  # obtain x2's ancestors
+a2 -> a1  # compare a2 to x3's ancestors. Here a1 is also an ancestor of x3
+a2 -> a3  # compare a2 to x3's ancestors
+a2 -> x3  # compare a2 to x3's ancestors
+
+# the pair of x2 and x4
+# since x2's ancestore are already obtained, we do not need to do it again
+a2 -> a1  # compare a2 to x4's ancestors
+a2 -> a3  # compare a2 to x4's ancestors
+a2 -> x3  # compare a2 to x4's ancestors
+```
+
+The total number when $a_2$ is visited is 19.
+
+
+**The "top-bottom" methods by simona**:
+
+```
+# get all ancestors of x1, x2, x3 and x4
+x1 -> a2
+a2 -> a1
+x2 -> a2  # because a2 is already visited from x1, the traversal from x2 stops here
+
+# traverse down from a1
+a1 -> a2
+a2 -> x1
+a2 -> x2
+
+# traverse down from a2
+a2 -> x1
+a2 -> x2
+
+# obtain the tuple (a2, x_i, x_j)
+a2 -> x1
+a2 -> x2
+```
+
+Now $a_2$ is only visited 10 times.
+
+Let's make a comparison of how $a_2$ is visited by the two algorithms:
+
+<style>
+table.table {
+    width:400px;
+}
+</style>
+
+|  traversal   | bottom-up|  top-bottom (simona) |
+|:--------|----:|------------:|
+|a2 -> a1 |    7|    1 |
+|a1 -> a2 |    0|    1 |
+|a2 -> a2 |    1|    0 |
+|a2 -> a3 |    4|    0 |
+|a2 -> x1 |    0|    3 | 
+|a2 -> x2 |    1|    3 |
+|a2 -> x3 |    3|    0 |
+|a2 -> x4 |    1|    0 |
+|x1 -> a2 |    1|    1 |
+|x2 -> a2 |    1|    1 |
+
+From the table above, we can see in the "bottom-up" method, the traversal `a2
+-> a1` is performed 7 times. It is visited at least once when obtaining
+ancestor terms of every query term. This traversal is repeated unnecessarily, because
+$a_1$ is the root and it is a common ancestor of every pair of the query terms, with
+no need to test to other terms in the DAG. Another type of unnecessary comparison is between
+$a_2$ and $a_3$ which is visited 4 times by the bottom-up method. $a_2$ and $a_3$ are not connected
+and there is no need to compare the two terms.
+
+There are also traversals in the "top-bottom" methods that are more visited than the "bottom-up" method,
+such as `a2 -> x1`. This is quite low in the DAG, and it is visited for every on $a_2$'s ancestors in the DAG.
+Nevertheless, the total run time is still effcient for the "top-bottom" method. 
+
+
+## Time complexity
+
+The top-down algorithm by **simona** has a time complexity of $O(n^2)$. 
+We can validated it by two DAGs. The first one `binary_tree` is a tree where each term has two children
+and all leaf terms have the same depth of 11.
+
+```{r}
+library(simona)
+binary_tree = dag_random(n_children = 2, tree = TRUE, depth = 11)
+binary_tree
+```
+
+In the second DAG, each term has the number of children ranging between 3 to 10. On each term,
+there is a probability of 0.8 that it connects to other terms lower in the DAG, with the number of 
+terms to be connected ranging between 1 and 15. The maximal number of terms in the DAG is set to 4000.
+
+```{r}
+set.seed(37)
+random_dag1 = dag_random(n_children = c(3, 10), max = 4000, p = 0.8, power = -1, np = c(1, 15))
+random_dag1
+```
+
+In `binary_tree`, average number of parents is 1 (exclude the root), and in `random_dag`, the average
+number of parents is higher, more DAG is more densely connected in `random_dag`:
+
+```{r}
+mean(n_parents(random_dag))
+```
+
+
+Let's visualize these two DAGs:
+
+```{r, fig.width = 12, fig.height = 5, fig.cap = "Figure S2.3. Visualization of the binary tree and a random dense DAG."}
+library(grid)
+pushViewport(viewport(x = 0.25, width = 0.5))
+dag_circular_viz(binary_tree, newpage = FALSE)
+popViewport()
+
+pushViewport(viewport(x = 0.75, width = 0.5))
+dag_circular_viz(random_dag, edge_transparency = 0.96, newpage = FALSE)
+popViewport()
+```
+
+And we compare the runtime performance on the two DAGs with different forms.
+
+
+
+```{r}
+benchmark_runtime = function(dag, by = 200, max = 10000) {
+    invisible(dag_depth(dag))  # depth will be cached
+
+    n_terms = dag_n_terms(dag)
+    k = seq(by, min(max, floor(n_terms/by)*by), by = by)
+    t = rep(NA_real_, length(k))
+    for(i in seq_along(k)) {
+        terms = sample(n_terms, k[i]) # numeric indicies are also allowed
+        t[i] = system.time(term_sim(dag, terms, method = "Sim_WP_1994"))[3]
+    }
+    data.frame(k = k, t = t)
+}
+
+lt = list()
+lt[[1]] = benchmark_runtime(binary_tree, by = 100)
+lt[[2]] = benchmark_runtime(random_dag1, by = 100)
+```
+
+
+```{r, fig.width = 12, fig.height = 6, fig.cap = "Figure S2.4. Runtime performance on the binary tree and the random dense DAG. Left: absolute time complexity. Right: relative time complexity."}
+par(mfrow = c(1, 2))
+plot(NULL, xlim = c(0, 4100), ylim = c(0, max(lt[[1]]$t, lt[[2]]$t)),
+    xlab = "Numbers of random terms", ylab = "runtime (sec)")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    lines(x, y, col = i + 1)
+}
+legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+
+plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
+    xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled")
+for(i in seq_along(lt)) {
+    x = lt[[i]]$k
+    y = lt[[i]]$t
+    x = x/max(x)
+    y = y/max(y)
+    lines(x, y, col = i + 1)
+}
+curve(x^1, from = 0, to = 1, lty = 2, add = TRUE)
+curve(x^2, from = 0, to = 1, lty = 2, add = TRUE)
+legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+```
+
+Figure S2.4 shows that when the DAG has a more complex structure, i.e. a term has more than one parent, the scaling of 
+the time complexity increases.
+

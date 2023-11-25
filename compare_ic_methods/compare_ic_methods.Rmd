@@ -56,7 +56,7 @@ make the correlation heatmap. As 1 - correlation is also a valid dissimilarity
 measurement, we directly generate the hierarchical clustering based on `1 -
 cor`.
 
-```{r, fig.width = 7, fig.cap = "Figure S3-1. Correlation heatmap of ICs of GO BP terms by various IC methods."}
+```{r, fig.width = 7, fig.cap = "Figure S3.1. Correlation heatmap of ICs of GO BP terms by various IC methods."}
 cor = cor(df, use = "pairwise.complete.obs")
 hc = hclust(as.dist(1 - cor))
 library(ComplexHeatmap)
@@ -88,7 +88,7 @@ group = c("IC_height"        = "1",
 Next we perform MDS (multi-dimension scaling) analysis on the `1-cor` distance matrix and
 visualize the first two dimensions. 
 
-```{r, fig.width = 7, fig.cap = "Figure S3-2. MDS plot of similarities between various IC methods on GO BP terms."}
+```{r, fig.width = 7, fig.cap = "Figure S3.2. MDS plot of similarities between various IC methods on GO BP terms."}
 library(ggrepel)
 library(ggplot2)
 loc = cmdscale(as.dist(1 - cor))
@@ -111,7 +111,7 @@ are quite far from other points in the MDS plot.
 We can directly compare different IC methods with pairwise scatterplots, colored by 
 the depths of terms, which helps to see how term depths are weighted in different IC methods.
 
-```{r, fig.width = 12, fig.height = 12, fig.cap = "Figure 3-3. Pairwise comparison between various IC methods on GO BP terms."}
+```{r, fig.width = 12, fig.height = 12, fig.cap = "Figure 3.3. Pairwise comparison between various IC methods on GO BP terms."}
 col = c("IC_height"        = 2,
         "IC_Sanchez_2011"  = 2,
         "IC_Zhou_2008"     = 2,

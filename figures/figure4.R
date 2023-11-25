@@ -23,14 +23,14 @@ l = term1 != term2
 
 data = data.frame(x = 2, group = c("same", "different"), n = c(sum(!l), sum(l)))
 data$label = paste0(round(data$n/sum(data$n)*100, 1), "%")
-data$label[1] = paste0(data$label[1], "\n4-4same")
+data$label[1] = paste0(data$label[1], "\nsame")
 data$label[2] = paste0(data$label[2], "\ndifferent")
 p1 = ggplot(data, aes(x = x, y = n, fill = group)) +
 	geom_col() +
         geom_text(aes(label = label), position = position_stack(vjust = 0.5)) +
 	coord_polar("y", start = 0) +
         xlim(c(1, 2.5)) + labs(y = "Number of term pairs") +
-	ggtitle("Compare MICA and LCA") +
+	ggtitle("A) Compare MICA and LCA") +
         theme(axis.line=element_blank(),
           # axis.text.x=element_blank(),
           axis.text.y=element_blank(),
@@ -54,7 +54,7 @@ data = data.frame(x = x)
 p2 = ggplot(data, aes(x = x)) + 
 	geom_bar() +
 	labs(x = "Undirected distance bewteem MICA and LCA", y = "Count") +
-        ggtitle("On term pairs with different MICA and LCA")
+        ggtitle("B) On term pairs with different MICA and LCA")
 
 
 mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
@@ -68,11 +68,11 @@ ht_list =
 Heatmap(mat1, name = "similarity_Lin", 
         show_row_names = FALSE, show_column_names = FALSE,
         row_order = od, column_order = od, use_raster = TRUE, raster_quality = 2,
-        column_title = "Sim_Lin_1998, based on MICA/IC_annotation") +
+        column_title = "C) Sim_Lin_1998, based on MICA/IC_annotation") +
 Heatmap(mat2, name = "similarity_WP", 
         show_row_names = FALSE, show_column_names = FALSE,
         row_order = od, column_order = od, use_raster = TRUE, raster_quality = 2,
-        column_title = "Sim_WP_1994, based on LCA/depth")
+        column_title = "D) Sim_WP_1994, based on LCA/depth")
 
 p3 = grid.grabExpr(draw(ht_list, gap = unit(5, "mm")), width = 10, height = 5)
 
