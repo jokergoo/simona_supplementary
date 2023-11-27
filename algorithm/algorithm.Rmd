@@ -23,7 +23,9 @@ knitr::opts_chunk$set(
 
 ## The algorithm
 
-The key step in semantic similarity analysis is to look for the tuple of three
+**The task**: for a given set of query terms, calculate their semantic similarities.
+
+The key step is to look for the tuple of three
 items $(a, x_1, x_2)$ where $a$ is a common ancestor of the two terms $x_1$
 and $x_2$. **simona** implements a "top-bottom" algorithm to traverse the DAG to
 obtain such tuples where $a$ is always a common ancestor of $x_1$ and $x_2$.
@@ -34,15 +36,17 @@ obtain such tuples where $a$ is always a common ancestor of $x_1$ and $x_2$.
 knitr::include_graphics("f2.png")
 ```
 
-We use a simplified DAG in Figure S2.1 as an example to explain the algorithm used in
-**simona**. In this example, we want to calculate depths of LCA (the lowest
-common ancestors) terms of four query terms of $x_1$, $x_2$, $x_3$ and $x_4$.
-The results is saved in a symmetric matrix denoted as $M$.
-The algorithm includes two steps:
+We use a simplified DAG in Figure S2.1 as an example to explain the algorithm
+used in **simona**. In this example, we want to calculate depths of LCA (the
+lowest common ancestors) terms of four query terms of $x_1$, $x_2$, $x_3$ and
+$x_4$ (where semantic similarities can be further calculated based on the LCA
+depth, and the process is the same as looking for MICA terms). The depths of
+LCA terms of the four query terms are saved in a symmetric matrix denoted as
+$M$. The algorithm includes two steps:
 
 1. Find all the ancestors of $x_1$, $x_2$, $x_3$ and $x_4$, also including the
    four query terms. This can be done by the breadth-first search (BFS) or
-   depth-first search (DFS). We denote this set of terms as $A$. In Figure
+   depth-first search (DFS). We denote this set of ancestor terms as $A$. In Figure
    S2.1A, $A$ includes terms in blue and red.
 2. For every term $a$ in $A$, there are two sub-steps:
    
@@ -50,9 +54,9 @@ The algorithm includes two steps:
       be done by BFS or DFS. Let's denote this subset of query terms as $D$.
    2. Then for every pair of terms in $D$, $a$ is always their common
       ancestor. Thus, we only need to update values in the sub-matrix of $M$
-      that corresponds to terms in $D$, by comparing the depth of $a$.
+      that corresponds to terms in $D$, by comparing to the depth of $a$.
    
-   Figure S2.1 B-F as well as matrices in the bottom right in Figure S2.1
+   Figure S2.1 B-F as well as matrices in the bottom right of Figure S2.1
    illustrate this process. Note in the figures, we start from term $a_1$
    which is the root in $A$, but the order of B-F does not matter and it can be randomly permutated.
 
@@ -69,7 +73,7 @@ pair of query terms. The algorithm can be summarized in the following four steps
 
 1. For query term $x_1$, get the set of its ancestors, denoted as $A_1$.
 2. For query term $x_2$, get the set of its ancestors, denoted as $A_2$.
-3. Get the intersection set from $A_1$ and $A_2$, denoted as $A_\mathrm{intersect}$.
+3. Get the intersection set of $A_1$ and $A_2$, denoted as $A_\mathrm{intersect}$.
 4. Obtain the LCA term from $A_\mathrm{intersect}$.
 
 
@@ -93,7 +97,7 @@ The steps where $a_2$ is visited and how it is visited are listed as follows:
 ```
 # the pair of x1 and x4
 x1 -> a2  # obtain x1's ancestors
-a2 -> a1  # obtain x1's ancestors
+a2 -> a1  # obtain x1's ancestors.
 a2 -> a1  # compare a2 to x4's ancestors. Here a1 is also an ancestor of x4
 a2 -> a3  # compare a2 to x4's ancestors
 a2 -> x4  # compare a2 to x4's ancestors
@@ -151,7 +155,8 @@ a2 -> x2
 
 Now $a_2$ is only visited 10 times.
 
-Let's make a comparison of how $a_2$ is visited by the two algorithms:
+Let's make a comparison of how $a_2$ is visited by the two algorithms.
+In the following table, numbers represent the times of each traversal step.
 
 <style>
 table.table {
@@ -174,41 +179,46 @@ table.table {
 
 From the table above, we can see in the "bottom-up" method, the traversal `a2
 -> a1` is performed 7 times. It is visited at least once when obtaining
-ancestor terms of every query term. This traversal is repeated unnecessarily, because
-$a_1$ is the root and it is a common ancestor of every pair of the query terms, with
-no need to test to other terms in the DAG. Another type of unnecessary comparison is between
-$a_2$ and $a_3$ which is visited 4 times by the bottom-up method. $a_2$ and $a_3$ are not connected
-and there is no need to compare the two terms.
+ancestor terms of every query term. This traversal is repeated unnecessarily,
+because $a_1$ is the root and it is a common ancestor of every pair of the
+query terms, with no need to test to other terms in the DAG again and again.
+Another type of unnecessary comparison is between $a_2$ and $a_3$ which is
+visited 4 times by the bottom-up method. $a_2$ and $a_3$ are not connected and
+there is no need to compare the two terms.
 
-There are also traversals in the "top-bottom" methods that are more visited than the "bottom-up" method,
-such as `a2 -> x1`. This is quite low in the DAG, and it is visited for every on $a_2$'s ancestors in the DAG.
-Nevertheless, the total run time is still effcient for the "top-bottom" method. 
+There are also traversals in the "top-bottom" methods that are more visited
+than the "bottom-up" method, such as `a2 -> x1`. This link locates quite low
+in the DAG, and it is visited from every of $a_2$'s ancestors in the DAG.
+Nevertheless, the total run time is still effcient for the "top-bottom"
+method.
 
 
 ## Time complexity
 
-The top-down algorithm by **simona** has a time complexity of $O(n^2)$. 
-We can validated it by two DAGs. The first one `binary_tree` is a tree where each term has two children
-and all leaf terms have the same depth of 11.
+The top-down algorithm by **simona** has a time complexity approximate to
+$O(n^2)$. We can emperically validated it by two DAGs. The first one
+`binary_tree` is a tree where each term has two children and all leaf terms
+have the same depth of 11.
 
 ```{r}
 library(simona)
-binary_tree = dag_random(n_children = 2, tree = TRUE, depth = 11)
+binary_tree = dag_random_tree(n_children = 2, max = 2^12 - 1)
 binary_tree
 ```
 
-In the second DAG, each term has the number of children ranging between 3 to 10. On each term,
-there is a probability of 0.8 that it connects to other terms lower in the DAG, with the number of 
-terms to be connected ranging between 1 and 15. The maximal number of terms in the DAG is set to 4000.
+The second DAG is based on `binary_tree` where each term has a probability of 0.6
+to add other 2 ~ 10 terms as its new child terms that are lower than the term.
+
 
 ```{r}
-set.seed(37)
-random_dag1 = dag_random(n_children = c(3, 10), max = 4000, p = 0.8, power = -1, np = c(1, 15))
-random_dag1
+set.seed(123)
+random_dag = dag_add_random_children(binary_tree, p_add = 0.6, new_children = c(2, 10))
+random_dag
 ```
 
-In `binary_tree`, average number of parents is 1 (exclude the root), and in `random_dag`, the average
-number of parents is higher, more DAG is more densely connected in `random_dag`:
+In `binary_tree`, average number of parents is 1 (exclude the root), and in
+`random_dag`, the average number of parents is higher, which means it is more
+densely connected in `random_dag`:
 
 ```{r}
 mean(n_parents(random_dag))
@@ -228,8 +238,7 @@ dag_circular_viz(random_dag, edge_transparency = 0.96, newpage = FALSE)
 popViewport()
 ```
 
-And we compare the runtime performance on the two DAGs with different forms.
-
+And we compare the runtime performance on the two DAGs.
 
 
 ```{r}
@@ -248,7 +257,7 @@ benchmark_runtime = function(dag, by = 200, max = 10000) {
 
 lt = list()
 lt[[1]] = benchmark_runtime(binary_tree, by = 100)
-lt[[2]] = benchmark_runtime(random_dag1, by = 100)
+lt[[2]] = benchmark_runtime(random_dag, by = 100)
 ```
 
 
@@ -261,7 +270,7 @@ for(i in seq_along(lt)) {
     y = lt[[i]]$t
     lines(x, y, col = i + 1)
 }
-legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+legend("topleft", lty = 1, col = 2:3, legend = c("binary_tree", "random_dag"))
 
 plot(NULL, xlim = c(0, 1), ylim = c(0, 1),
     xlab = "Numbers of random terms, scaled", ylab = "runtime, scaled")
@@ -274,9 +283,50 @@ for(i in seq_along(lt)) {
 }
 curve(x^1, from = 0, to = 1, lty = 2, add = TRUE)
 curve(x^2, from = 0, to = 1, lty = 2, add = TRUE)
-legend("topleft", lty = 2, col = 2:3, legend = c("binary_tree", "random_dag"))
+legend("topleft", lty = 1, col = 2:3, legend = c("binary_tree", "random_dag"))
 ```
 
-Figure S2.4 shows that when the DAG has a more complex structure, i.e. a term has more than one parent, the scaling of 
-the time complexity increases.
+Figure S2.4 shows that when the DAG has a more complex structure, i.e. a term
+has more than one parent, the scaling factor of the time complexity increases.
 
+
+
+## Session info
+
+```{r}
+sessionInfo()
+```
+
+
+
+<script src="jquery.sticky.js"></script>
+<script>
+$(document).ready(function(){
+    $("#TOC").sticky({
+        topSpacing: 0,
+        zIndex:1000    
+    })
+    $("#TOC").on("sticky-start", function() {
+
+        $("<p style='font-size:1.2em; padding-left:4px;'><a id='TOC-click'>Table of Content</a></p>").insertBefore($("#TOC ul:first-child"));
+        $("#TOC-click").hover(function() {
+            $(this).css("color", "#0033dd").css("cursor", "pointer");
+            $("#TOC").children().first().next().show();
+            $("#TOC").hover(function() {
+                $(this).children().first().next().show();
+            }, function() {
+                $(this).children().first().next().hide();
+                $("body").off("hover", "#TOC");
+            })
+        }, function() {
+            $(this).css("color", "#0033dd");
+        })
+        $("#TOC").children().first().next().hide();
+
+    })
+    $("#TOC").on("sticky-end", function() {
+        $("#TOC").children().first().remove();
+        $("#TOC").children().first().show();
+    })
+});
+</script>

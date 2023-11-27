@@ -1,5 +1,5 @@
 ---
-title: "Supplementary File 5. Compare topology and annotation-based semantic similarity methods"
+title: "Supplementary File 5. Compare topology-based and annotation-based semantic similarity methods"
 author: "Zuguang Gu ( z.gu@dkfz.de )"
 date: '`r Sys.Date()`'
 output: 
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
     fig.align = "center")
 ```
 
-Other R packages for semantic similarity analysis are only based on gene
+Existing R packages for semantic similarity analysis are only based on gene
 annotations, thus mainly applicable on Gene Ontology. Besides
 annotation-based methods, **simona** also supports a large number of methods
 based on the topology of GO DAG, with no need of external annotation data. In
@@ -220,7 +220,7 @@ Note that the following two heatmaps share the same row orders and column orders
 
 <div id="order1">
 
-```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5.4. Heatmap of semantic similarities from the Lin 1998 method and WP 1994 method."}
+```{r, fig.width = 10, fig.height = 5, fig.cap = "Figure S5.4. Heatmap of semantic similarities from the Lin 1998 method and WP 1994 method. The two heatmaps have the same row orders and column orders."}
 mat1 = term_sim(dag, go_id, method = "Sim_Lin_1998")
 mat2 = term_sim(dag, go_id, method = "Sim_WP_1994")
 

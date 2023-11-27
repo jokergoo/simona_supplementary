@@ -98,7 +98,7 @@ Heatmap(cor, name = "correlation", cluster_rows = hc, cluster_columns = hc,
 We next remove the following similarity methods which show very different patterns
 to other methods, and remake the heatmap.
 
-```{r, fig.width = 8, fig.height = 8, fig.cap = "Figure S4.2. Correlation heatmap of semantic similarities after removing seven methods that generate very different patterns from other methods. Please note the color scale is differennt from Figure S4-1."}
+```{r, fig.width = 8, fig.height = 8, fig.cap = "Figure S4.2. Correlation heatmap of semantic similarities after removing seven methods that generate very different patterns from other methods. Please note the color scale is differennt from Figure S4.1."}
 ind = which(colnames(df) %in% c("Sim_Jiang_1997", "Sim_HRSS_2013", "Sim_universal",
     "Sim_Dice", "Sim_Kappa", "Sim_Jaccard", "Sim_Overlap"))
 cor2 = cor[-ind, -ind]
@@ -186,8 +186,8 @@ for(nm in names(lt)) {
 
 
 Following are the pairwise scatterplots of semantic similarities from two term similarity methods. The five groups
-are from the heatmap in Figure S4-2. Since each point correspond to a term-pair, the color of the point
-corresponds to the depth of their LCA term. Note that for those methods based on MICA terms, as shown in the document ["Compare topology and annotation-based semantic similarity methods"](../compare_topo_anno/compare_topo_anno.html), majority of LCA terms and MICA terms are the same.
+are from the heatmap in Figure S4.2. Since each point correspond to a term-pair, the color of the point
+corresponds to the depth of their LCA term. Note that for those methods based on MICA terms, as shown in the document ["Compare topology and annotation-based semantic similarity methods"](../compare_topo_anno/compare_topo_anno.html), majority of LCA terms and MICA terms are the same. So in this comparison, we can take $\mathrm{LCA} \approx \mathrm{MICA}$.
 
 The methods in the five groups are summarized as follows:
 
@@ -314,12 +314,12 @@ Finally, you can select an individual heatmap of similarities calculated by: <se
   <option value='31'>Sim_Dice</option>
   <option value='32'>Sim_Overlap</option>
   <option value='33'>Sim_Ancestor</option>
-</select> <input id="use_lin_order" type="checkbox" /> Use order from Sim_Lin_1998
+</select> <input id="use_lin_order" type="checkbox" checked /> Use order from Sim_Lin_1998
 
 <span id="prev" value="33">Prev method: Sim_Ancestor</span> <span id="curr">Curr method: Sim_Lin_1998</span> <span id="next" value="1">Next method: Sim_Resnik_1999</span> 
 
 <div id="image" class="figure">
-<img src="image/go_bp_random_500_sim_Sim_Lin_1998.png" width="700" />
+<img src="image/go_bp_random_500_sim_Sim_Lin_1998_Lin_order.png" width="700" />
 <p class="caption">Figure S4.5. Similarity heatmap of the 500 random GO BP terms under different similarity methods.</p>
 </div>
 
